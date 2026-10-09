@@ -1,4 +1,4 @@
--- made by feariosz0 in discord, beta v1.0.1
+-- made by feariosz0 in discord beta version v1.0.2
 
 local noclipbool = false
 local infstambool = false
@@ -432,10 +432,23 @@ local function kill(arg)
     end
     
     local hp = gethp()
+    local hm = gethm()
     local og = hp.CFrame
+    
+    local hm = gethm()
+    local anim = Instance.new('Animation')
+    anim.AnimationId = 'rbxassetid://279229192'
+    anim.Name = 'HelperAnim'
+    anim.Parent = hm
+    local track = hm:LoadAnimation(anim)
+    track:Play()
     
     local Event = storage.meleeEvent
     repeat
+        if hm.Health == 0 then
+            task.wait(players.RespawnTime)
+            kill(arg)
+        end
         cam.CameraSubject = ch.Humanoid
         hp.CFrame = target.CFrame * CFrame.new(0, -4, 0)
         Event:FireServer(
@@ -445,6 +458,9 @@ local function kill(arg)
         )
         task.wait()
     until ch.Humanoid.Health == 0
+    for _, trac in pairs(gethm():GetPlayingAnimationTracks()) do
+        trac:Stop()
+    end
     hp.CFrame = og
     cam.CameraSubject = gethm()
 end
@@ -499,8 +515,7 @@ local function car()
 
     task.wait(0.5)
 
-    local seat = carModel:FindFirstChildWhichIsA("VehicleSeat", true)
-        or carModel:FindFirstChildWhichIsA("Seat", true)
+    local seat = carModel:FindFirstChildWhichIsA("VehicleSeat", true) or carModel:FindFirstChildWhichIsA("Seat", true)
 
     if seat then
         hp.CFrame = seat.CFrame * CFrame.new(0,0,-2)
