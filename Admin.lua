@@ -1,10 +1,11 @@
--- Made by feariosz0 in discord, beta version v1.0.0
+-- made by feariosz0 in discord, beta v1.0.1
 
 local noclipbool = false
 local infstambool = false
 local autorebool = false
 local autogbool = false
 local infjumpbool = false
+local antisitconn;
 
 local function gets(service)
     return game:GetService(service)
@@ -392,7 +393,7 @@ local function arrest(arg)
         localp.Backpack.Handcuffs.Parent = ch1
     end
 
-    for i = 1, 10 do
+    for i = 1, 15 do
         if not target.Parent or not ch.Parent then
             break
         end
@@ -480,7 +481,9 @@ local function car()
     local Event = storage.Remotes.InteractWithItem
 
     for _, v in pairs(workspace.CarContainer:GetChildren()) do
-        v:Destroy()
+        if v.Name == "Squads" then
+            v:Destroy()
+        end
     end
 
     hp.CFrame = cf
@@ -500,14 +503,12 @@ local function car()
         or carModel:FindFirstChildWhichIsA("Seat", true)
 
     if seat then
-        hp.CFrame = seat.CFrame
+        hp.CFrame = seat.CFrame * CFrame.new(0,0,-2)
         task.wait(0.5)
-
-        seat:Sit(hm)
-        task.wait(1.5)
     else
-        notify("Car", "No seat found; welding anyway", 5)
+        notify("Car", "No seat found", 5)
         task.wait(1)
+        return
     end
 
     local parts = {}
@@ -526,37 +527,131 @@ local function car()
 
     for _, v in pairs(parts) do
         if v ~= hp then
-            v.Anchored = false
-            v.CanCollide = false
-
-            local weld = Instance.new("WeldConstraint")
-            weld.Part0 = hp
-            weld.Part1 = v
-            weld.Parent = hp
+            v.CFrame = og * CFrame.new(0, 5, 0)
         end
+    end
+    
+    task.wait(0.1)
+    
+    for _, v in pairs(carModel.Wheels:GetChildren()) do
+        v.CFrame = body.Main.CFrame
     end
 
     task.wait(0.2)
     hp.CFrame = og
-    hm:ChangeState(Enum.HumanoidStateType.Jumping)
+    
+    for i = 1, 50 do
+        seat:Sit(hm)
+        task.wait()
+    end
+end
+
+local function kickhelper(hum)
+    return hum.SeatPart:IsA('VehicleSeat')
+end
+
+local function antisit(bool)
+    if not bool then
+        antisitconn:Disconnect()
+    end
+    
+    local hm = gethm()
+    
+    antisitconn = run.Heartbeat:Connect(function()
+        if hm and hm.Sit then
+            hm.Sit = false
+            hm:ChangeState(Enum.HumanoidStateType.GettingUp)
+        end
+    end)
+end
+
+local function kick(arg)
+    local player, err = findpl(arg)
+
+    if not player then
+        notify('Kick', err, 5)
+        return
+    end
+    
+    local ch1 = player.Character
+    local hm1 = ch1.Humanoid
+    
+    local bool = kickhelper(hm1)
+    
+    if not bool then
+        notify('Kick', 'Player Is Not In A Car', 5)
+        return
+    end
+    
+    local ch = getch()
+    local hp = gethp()
+    local hp1 = ch1.HumanoidRootPart
+    local og = hp.CFrame
+    local og1 = hp.Velocity
+    hp.Velocity = Vector3.new(0,10000,0)
+    task.wait()
+    antisit(true)
+    for i = 1,50 do
+        hp.CFrame = hp1.CFrame * CFrame.new(1,-1,1)
+        task.wait()
+    end
+    task.wait()
+    hp.CFrame = og
+    hp.Velocity = og1
+    antisit(false)
+end
+
+local function goto(arg)
+    local player, err = findpl(arg)
+
+    if not player then
+        notify('Teleport', err, 5)
+        return
+    end
+    
+    if not player.Character then
+        notify('Teleport', 'Character Not Found', 5)
+        return
+    end
+    
+    if not player.Character:FindFirstChild('HumanoidRootPart') then
+        notify('Teleport', 'HumanoidRootPart Not Found', 5)
+        return
+    end
+    
+    local ch = getch()
+    local hp = gethp()
+    
+    local ch1 = player.Character
+    local hp1 = ch1.HumanoidRootPart
+    
+    hp.CFrame = hp1.CFrame
 end
 
 local prefix;
 local cmds = {
 	"cmds",
+	"goto <player name> / to <player name>",
 	"noclip / unnoclip / clip",
 	"infstamina / infstam",
 	"criminal / crim",
-	"autorespawn / autore",
-	"ak47 / remington / rem / autoguns",
-	"base / yard / prison / cafeteria / caf / tower",
+	"autorespawn / autore / unautore",
+	"ak47",
+    "remington / rem",
+    "autoguns / unautoguns",
+	"base",
+    "yard",
+    "prison",
+    "cafeteria / caf",
+    "tower",
 	"removedoors / rdoors",
 	"arrest <player name> (shortcut names supported)",
 	"infjump / uninfjump",
-	"kick <player name> (soon)",
-	"bring <player name> (soon)",
-	"kill <player name>",
-	"car (broken)",
+	"kick <player name> (broken) (shortcut names supported)",
+	"bring <player name> (soon maybe)",
+	"kill <player name> (shortcut names supported)",
+	"car (must not be in prison)",
+	"walkspeed <number> / speed <number>",
 }
 
 localp.Chatted:Connect(function(msg)
@@ -593,12 +688,16 @@ localp.Chatted:Connect(function(msg)
         autore()
     elseif msg:find(prefix..'autore') then
         autore()
+    elseif msg:find(prefix..'unautore') then
+        autorebool = false
     elseif msg:find(prefix..'ak47') then
         ak47()
     elseif msg:find(prefix..'remington') then
         shotgun()
     elseif msg:find(prefix..'autoguns') then
         autog()
+    elseif msg:find(prefix..'unautoguns') then
+        autogbool = false
     elseif msg:find(prefix..'rem') then
         shotgun()
     elseif msg:find(prefix..'base') then
@@ -631,6 +730,26 @@ localp.Chatted:Connect(function(msg)
     local arg1 = msg:match('^' .. prefix .. 'kill%s+(.+)$')
     if arg1 then
         kill(arg1)
+    end
+    local arg2 = msg:match('^' .. prefix .. 'kick%s+(.+)$')
+    if arg2 then
+        kick(arg2)
+    end
+    local arg3 = msg:match('^' .. prefix .. 'goto%s+(.+)$')
+    if arg3 then
+        goto(arg3)
+    end
+    local arg4 = msg:match('^' .. prefix .. 'to%s+(.+)$')
+    if arg4 then
+        goto(arg4)
+    end
+    local ws = msg:match('^' .. prefix .. 'walkspeed%s+(%d+%.?%d*)$')
+    if ws then
+        gethm().WalkSpeed = tonumber(ws)
+    end
+    local ws1 = msg:match('^' .. prefix .. 'speed%s+(%d+%.?%d*)$')
+    if ws1 then
+        gethm().WalkSpeed = tonumber(ws1)
     end
 end)
 
