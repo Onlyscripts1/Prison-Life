@@ -1,15 +1,26 @@
--- This script is made by feariosz0 in discord, beta v1.0.3
+-- This script is made by feariosz0 in discord, beta v1.0.5
 
 local noclipbool = false
 local infstambool = false
 local autorebool = false
 local autogbool = false
 local infjumpbool = false
+local silentAimEnabled = false
+local espbool = false
+local espconn;
 local antisitconn;
 
 local loopkill = false
 
-local whitelisted = {
+local tps = 0
+local tplimit = 6
+local tpcooldown = false
+local tpdelay = 8
+local lasttp = 0
+
+local ignore = false
+
+local whitelisted = { -- ts me twin dont delete ;)
 	"vole7vin",
 	"RONALDO_32720",
 }
@@ -80,6 +91,42 @@ local function gethp()
     end
 end
 
+local function counttp()
+    if ignore then
+        return true
+    end
+    
+    local now = tick()
+    local remaining = tpdelay - (now - lasttp)
+    
+    if remaining > 0 then
+        notify("Teleport", "Wait " .. math.ceil(remaining) .. " seconds before another TP", 5)
+        return false
+    end
+    
+    if tpcooldown then
+        return false
+    end
+
+    tps = tps + 1
+
+    if tps >= tplimit then
+        tpcooldown = true
+        notify("Teleport Limit", "Please wait 30 seconds before teleporting again", 10)
+
+        task.delay(30, function()
+            tps = 0
+            tpcooldown = false
+            notify("Teleport Limit", "Teleport limit resetted, ur free", 5)
+        end)
+
+        return false
+    end
+    
+    lasttp = now
+    return true
+end
+
 do -- limit for kick/kill
     local p = Instance.new('Part')
     p.Name = 'HeightLimit'
@@ -134,6 +181,9 @@ local function infstam()
 end
 
 local function crim()
+    if not counttp() then
+        return
+    end
     local hp = gethp()
     local og = hp.CFrame
     local ogcam = cam.CFrame
@@ -152,6 +202,9 @@ local function autore()
     while autorebool do
         local hm = gethm()
         if hm and hm.Health == 0 then
+            if not counttp() then
+                return
+            end
             local ch = getch()
             local hp = gethp()
             local og = hp.CFrame
@@ -180,6 +233,9 @@ local function helper()
 end
 
 local function ak47()
+    if not counttp() then
+        return
+    end
     local hp = gethp()
     local hm = gethm()
     local cf = CFrame.new(-932, 94, 2039)
@@ -208,6 +264,9 @@ local function ak47()
 end
 
 local function shotgun()
+    if not counttp() then
+        return
+    end
     local hp = gethp()
     local hm = gethm()
     local cf = CFrame.new(-939, 94, 2040)
@@ -257,6 +316,9 @@ local function autog()
         end
 
         if not hasgun('AK-47') then
+            if not counttp() then
+                return
+            end
             local Event = storage.Remotes.InteractWithItem
             gethp().CFrame = CFrame.new(-929, 97, 2056)
             helper()
@@ -278,6 +340,9 @@ local function autog()
         end
 
         if not hasgun('Remington 870') then
+            if not counttp() then
+                return
+            end
             local Event = storage.Remotes.InteractWithItem
             gethp().CFrame = CFrame.new(-929, 97, 2056)
             helper()
@@ -305,12 +370,18 @@ local function autog()
 end
 
 local function base()
+    if not counttp() then
+        return
+    end
     local hp = gethp()
     local cf = CFrame.new(-929, 97, 2056)
     hp.CFrame = cf
 end
 
 local function yard()
+    if not counttp() then
+        return
+    end
     local ch = getch()
     if ch:FindFirstChild('ForceField') then
         notify('Teleport', 'Please Wait For ForceField To Expire', 5)
@@ -322,6 +393,9 @@ local function yard()
 end
 
 local function prison()
+    if not counttp() then
+        return
+    end
     local ch = getch()
     if ch:FindFirstChild('ForceField') then
         notify('Teleport', 'Please Wait For ForceField To Expire', 5)
@@ -333,6 +407,9 @@ local function prison()
 end
 
 local function cafeteria()
+    if not counttp() then
+        return
+    end
     local ch = getch()
     if ch:FindFirstChild('ForceField') then
         notify('Teleport', 'Please Wait For ForceField To Expire', 5)
@@ -344,6 +421,9 @@ local function cafeteria()
 end
 
 local function tower()
+    if not counttp() then
+        return
+    end
     local ch = getch()
     if ch:FindFirstChild('ForceField') then
         notify('Teleport', 'Please Wait For ForceField To Expire', 5)
@@ -389,6 +469,9 @@ local function findpl(arg)
 end
 
 local function arrest(arg)
+    if not counttp() then
+        return
+    end
     local player, err = findpl(arg)
 
     if not player then
@@ -436,6 +519,9 @@ local function arrest(arg)
 end
 
 local function kill(arg)
+    if not counttp() then
+        return
+    end
     local player, err = findpl(arg)
     if not player then
         notify('Kill', err, 5)
@@ -519,6 +605,9 @@ local function infjump()
 end
 
 local function car()
+    if not counttp() then
+        return
+    end
     local ch = getch()
     local hp = gethp()
     local hm = gethm()
@@ -611,6 +700,9 @@ local function antisit(bool)
 end
 
 local function kick(arg)
+    if not counttp() then
+        return
+    end
     local player, err = findpl(arg)
 
     if not player then
@@ -647,6 +739,9 @@ local function kick(arg)
 end
 
 local function goto(arg)
+    if not counttp() then
+        return
+    end
     local player, err = findpl(arg)
 
     if not player then
@@ -674,6 +769,9 @@ local function goto(arg)
 end
 
 local function hammer()
+    if not counttp() then
+        return
+    end
     if not workspace:FindFirstChild('Hammer') then
         notify('Hammer', 'Please Wait For It To Spawn', 5)
         repeat
@@ -703,6 +801,9 @@ local function hammer()
 end
 
 local function knife()
+    if not counttp() then
+        return
+    end
     if not workspace:FindFirstChild('Crude Knife') then
         notify('Crude Knife', 'Please Wait For It To Spawn', 5)
         repeat
@@ -786,6 +887,9 @@ local function loopk(arg)
 end
 
 local function getb()
+    if not counttp() then
+        return
+    end
     local bomb = workspace.Prison_ITEMS.giver["C4 Explosive"].Explosive
     local og = gethp().CFrame
     local args = {workspace:WaitForChild("Prison_ITEMS"):WaitForChild("giver"):WaitForChild("C4 Explosive"):WaitForChild("Handle")}
@@ -799,6 +903,9 @@ local function getb()
 end
 
 local function getf()
+    if not counttp() then
+        return
+    end
     local fal = workspace.Prison_ITEMS.giver.FAL.Handle
     local og = gethp().CFrame
     local Event = storage.Remotes.InteractWithItem
@@ -813,6 +920,9 @@ local function getf()
 end
 
 local function armory()
+    if not counttp() then
+        return
+    end
     local ch = getch()
     if ch:FindFirstChild('ForceField') then
         notify('Teleport', 'Please Wait For ForceField To Expire', 5)
@@ -823,9 +933,152 @@ local function armory()
     hp.CFrame = cf
 end
 
+local function silent()
+    silentAimEnabled = not silentAimEnabled
+    
+    if silentAimEnabled then
+        notify("Silent Aim", "Enabled", 3)
+    else
+        notify("Silent Aim", "Disabled", 3)
+    end
+    
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local Workspace = game:GetService("Workspace")
+
+    local aimPart = "Head"
+    local wallCheck = true
+    local fov = 360
+    local teamCheck = true
+    
+    local function canDamage(plr)
+    	local char = plr.Character
+    	if not char then return false end
+    	local hum = char:FindFirstChildOfClass("Humanoid")
+    	if not hum or hum.Health <= 0 then return false end
+    	if char:FindFirstChild("ForceField") then return false end
+    	if teamCheck and LocalPlayer.Team and plr.Team and LocalPlayer.Team == plr.Team then
+	    	return false
+    	end
+    	return true
+    end
+    
+    local function isVisible(char, origin)
+    	local params = RaycastParams.new()
+    	params.FilterType = Enum.RaycastFilterType.Exclude
+    	params.FilterDescendantsInstances = LocalPlayer.Character and { LocalPlayer.Character } or {}
+    	for _, part in ipairs({char:FindFirstChild(aimPart), char:FindFirstChild("Head"), char:FindFirstChild("HumanoidRootPart")}) do
+    		if not part then continue end
+    		local dir = part.Position - origin
+    		if dir.Magnitude <= 0 then continue end
+    		local result = Workspace:Raycast(origin, dir, params)
+    		if not result or result.Instance:FindFirstAncestorOfClass("Model") == char then
+	    		return part
+    		end
+    	end
+    	return nil
+    end
+    
+    local function getTarget(origin)
+    	local cam = Workspace.CurrentCamera
+    	if not cam then return nil end
+    	local vps = cam.ViewportSize
+    	local center = Vector2.new(vps.X / 2, vps.Y / 2)
+    	local bestDist = fov
+    	local bestPart = nil
+    	for _, plr in pairs(Players:GetPlayers()) do
+    		if plr == LocalPlayer or not canDamage(plr) then continue end
+    		local char = plr.Character
+    		local part = char:FindFirstChild(aimPart) or char:FindFirstChild("Head")
+    		if not part then continue end
+    		local pos, onScreen = cam:WorldToViewportPoint(part.Position)
+    		if not onScreen then continue end
+    		if (part.Position - cam.CFrame.Position):Dot(cam.CFrame.LookVector) <= 0 then continue end
+    		local sDist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+    		if sDist >= bestDist then continue end
+    		if wallCheck then
+    			local visPart = isVisible(char, origin)
+    			if not visPart then continue end
+    			part = visPart
+    		end
+    		bestPart = part
+    		bestDist = sDist
+    	end
+    	return bestPart
+    end
+    
+    local function getAttr(tool, attr)
+    	if typeof(tool) == "Instance" then
+    		local ok, val = pcall(function() return tool:GetAttribute(attr) end)
+    		if ok then return val end
+    	end
+    	return nil
+    end
+    
+    local function normalCast(p1, p2, p3)
+    	local origin, aim, tool
+    	if typeof(p1) == "Vector3" then
+    		origin = p1
+    		if typeof(p2) == "Vector3" then aim = p2 elseif typeof(p3) == "Vector3" then aim = p3 end
+    		if typeof(p2) == "Instance" then tool = p2 elseif typeof(p3) == "Instance" then tool = p3 end
+    	else
+    		tool = p1
+    		if typeof(p2) == "Vector3" then origin = p2 end
+    		if typeof(p3) == "Vector3" then aim = p3 elseif typeof(p2) == "Vector3" then aim = p2 end
+    	end
+    	if not origin or not aim then return nil, Vector3.new() end
+    	local dir = aim - origin
+    	if dir.Magnitude <= 0 then dir = Vector3.new(0, 0, -1) end
+    	local range = getAttr(tool, "Range") or 200
+    	local params = RaycastParams.new()
+    	params.FilterType = Enum.RaycastFilterType.Exclude
+    	params.FilterDescendantsInstances = LocalPlayer.Character and { LocalPlayer.Character } or {}
+    	params.CollisionGroup = "ClientBullet"
+    	local result = Workspace:Raycast(origin, dir.Unit * range, params)
+    	if result then return result.Instance, result.Position end
+    	return nil, origin + dir.Unit * range
+    end
+    
+    local function hookCast(p1, p2, p3)
+    	local origin
+    	if typeof(p1) == "Vector3" then origin = p1
+    	elseif typeof(p2) == "Vector3" then origin = p2
+    	elseif typeof(p3) == "Vector3" then origin = p3 end
+        if not silentAimEnabled then
+            return normalCast(p1, p2, p3)
+        end
+    	if origin then
+	    	local char = LocalPlayer.Character
+	    	local root = char and char:FindFirstChild("HumanoidRootPart")
+    		if root and (origin - root.Position).Magnitude <= 75 then
+	    		local target = getTarget(origin)
+	    		if target and target.Parent then
+	    			return target, target.Position
+    			end
+    		end
+    	end
+    	return normalCast(p1, p2, p3)
+    end
+    
+    if not _G.silentAimHooked then
+    	_G.silentAimHooked = true
+    	task.spawn(function()
+    		local hooked = 0
+    		for _, func in next, getgc(true) do
+    			if type(func) == "function" then
+	    			local info = debug.getinfo(func, "nS")
+	    			if info and info.name == "castRay" then
+	    				pcall(hookfunction, func, hookCast)
+	    				hooked = hooked + 1
+    				end
+    			end
+    			if hooked >= 5 then break end
+    		end
+    	end)
+    end
+end
+
 local esp = {}
-local espbool = false
-local espconn
 local espadded = {}
 
 local function espcolor(plr)
@@ -1020,6 +1273,9 @@ local cmds = {
 	"jumppower <number> / jumpp <number>",
 	"esp",
     "unesp",
+    "silentaim",
+    "ignorecd (ignores cooldown for tps)",
+    "unignorecd",
 }
 
 local gui=Instance.new("ScreenGui")
@@ -1201,7 +1457,7 @@ for i, command in ipairs(cmds) do
         cmd = cmd:match("^[^%(]+") or cmd
         cmd = cmd:gsub("%s+$", "")
 
-        bar.Text = ";" .. cmd .. " "
+        bar.Text = cmd
         bar:CaptureFocus()
         bar.CursorPosition = #bar.Text + 1
     end)
@@ -1286,6 +1542,10 @@ local function runcommand(msg, frombar)
         infjump()
     elseif cmd == "uninfjump" then
         infjumpbool = false
+    elseif cmd == "ignorecd" then
+        ignore = true
+    elseif cmd == "unignorecd" then
+        ignore = false
     elseif cmd == "car" then
         task.spawn(car)
     elseif cmd == "goto" or cmd == "to" then
@@ -1296,6 +1556,10 @@ local function runcommand(msg, frombar)
         espstart()
     elseif cmd == "unesp" then
         espstop()
+    elseif cmd == "silentaim" then
+        silent()
+    elseif cmd == "unsilentaim" then
+        silentAimEnabled = false
     elseif cmd == "arrest" and arg ~= "" then
         task.spawn(arrest, arg)
     elseif cmd == "kill" and arg ~= "" then
