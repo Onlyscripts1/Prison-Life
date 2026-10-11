@@ -13,10 +13,10 @@ local antisitconn;
 local loopkill = false
 
 local tps = 0
-local tplimit = 8
-local tpreset = 30
-local tpblocked = false
-local tpgen = 0
+local tplimit = 6
+local tpcooldown = false
+local tpdelay = 8
+local lasttp = 0
 
 local ignore = false
 
@@ -95,34 +95,35 @@ local function counttp()
     if ignore then
         return true
     end
-    if tpblocked then
+    
+    local now = tick()
+    local remaining = tpdelay - (now - lasttp)
+    
+    if remaining > 0 then
+        notify("Teleport", "Wait " .. math.ceil(remaining) .. " seconds before another TP", 5)
+        return false
+    end
+    
+    if tpcooldown then
         return false
     end
 
-    tps += 1
-    tpgen += 1
-
-    local gen = tpgen
-
-    task.delay(tpreset, function()
-        if tpgen == gen and not tpblocked then
-            tps = 0
-        end
-    end)
+    tps = tps + 1
 
     if tps >= tplimit then
-        tpblocked = true
-        notify("TP Limit", "TP limit reached! Wait 20 seconds.", 5)
+        tpcooldown = true
+        notify("Teleport Limit", "Please wait 30 seconds before teleporting again", 10)
 
-        task.delay(20, function()
+        task.delay(30, function()
             tps = 0
-            tpblocked = false
-            tpgen += 1
+            tpcooldown = false
+            notify("Teleport Limit", "Teleport limit resetted, ur free", 5)
         end)
 
         return false
     end
-
+    
+    lasttp = now
     return true
 end
 
