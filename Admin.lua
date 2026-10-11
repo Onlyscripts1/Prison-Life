@@ -532,9 +532,6 @@ local function animh()
 end
 
 local function arrest(arg)
-    if not counttp() then
-        return
-    end
     local player, err = findpl(arg)
 
     if not player then
