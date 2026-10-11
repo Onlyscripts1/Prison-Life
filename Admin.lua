@@ -20,6 +20,7 @@ local lasttp = 0
 
 local ignore = false
 
+local admins = {}
 local whitelisted = { -- ts me twin dont delete ;)
 	"vole7vin",
 	"RONALDO_32720",
@@ -36,6 +37,9 @@ local team = gets('Teams')
 local gui = gets('StarterGui')
 local run = gets('RunService')
 local input = gets('UserInputService')
+local texts = gets('TextChatService')
+
+local textcs = texts:WaitForChild("TextChannels"):WaitForChild("RBXGeneral")
 
 local function notify(title, text, duration)
     pcall(function()
@@ -1336,6 +1340,72 @@ local function antits()
     end
 end
 
+local function isadmin(plr)
+    return admins[plr.UserId] == true
+end
+
+local function watchadmin(plr)
+    plr.Chatted:Connect(function(msg)
+        if not isadmin(plr) then
+            return
+        end
+
+        print("[ADMIN CHAT] " .. plr.Name .. ": " .. msg)
+
+        local cmd, arg = msg:match("^%s*;(%S+)%s*(.-)%s*$")
+        if not cmd then
+            return
+        end
+
+        cmd = cmd:lower()
+        
+        if cmd == "cmds" then
+            textcs:SendAsync('prefix: ; commands: kill <player> kick <player> arrest <player> goto <player> crim (criminal) tower (teleport)')
+        end
+        
+        if cmd == "kill" and arg ~= "" then
+            task.spawn(kill,arg)
+        end
+        
+        if cmd == "kick" and arg ~= "" then
+            task.spawn(kick,arg)
+        end
+        
+        if cmd == "arrest" and arg ~= "" then
+            task.spawn(arrest,arg)
+        end
+        
+        if cmd == "goto" and arg ~= "" then
+            local x = findpl(arg)
+            if kickhelper(players[x].Character.Humanoid) then
+                textcs:SendAsync('Player' .. arg .. 'is seated, cant do goto!')
+                return
+            end
+            goto(arg)
+            task.wait(0.5)
+            task.spawn(bring,plr.Name)
+        end
+        
+        if cmd == "bring" and arg ~= "" then
+            goto(plr.Name)
+            task.wait(0.5)
+            task.spawn(bring,arg)
+        end
+        
+        if cmd == "crim" then
+            base()
+            task.wait(0.5)
+            task.spawn(bring,plr.Name)
+        end
+        
+        if cmd == "tower" then
+            tower()
+            task.wait(0.5)
+            task.spawn(bring,plr.Name)
+        end
+    end)
+end
+
 local function silent()
     silentAimEnabled = not silentAimEnabled
     
@@ -1687,6 +1757,7 @@ local cmds = {
     "unantitase",
     "view <player name>",
     "unview",
+    "admin <player> (ignorecd recommended)",
 }
 
 local gui=Instance.new("ScreenGui")
@@ -1967,6 +2038,21 @@ local function runcommand(msg, frombar)
         if arg ~= "" then
             goto(arg)
         end
+    elseif cmd == "admin" and arg ~= "" then
+        local plr, err = findpl(arg)
+        if not plr then
+            notify("Admin", err, 5)
+            return
+        end
+
+        admins[plr.UserId] = true
+        notify("Admin", plr.Name .. " is now an admin", 5)
+        
+        for _, plr in ipairs(players:GetPlayers()) do
+            watchadmin(plr)
+        end
+        
+        players.PlayerAdded:Connect(watchadmin)
     elseif cmd == "boost" then
         boosting = true
         task.spawn(function()
