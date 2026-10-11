@@ -1,4 +1,4 @@
--- This script is made by feariosz0 in discord, beta v1.0.5
+-- This script is made by feariosz0 in discord, beta v1.0.6
 
 local noclipbool = false
 local infstambool = false
@@ -468,6 +468,25 @@ local function findpl(arg)
     return found, found and nil or 'Player "' .. arg .. '" Not Found'
 end
 
+local function animh()
+    local hum = gethm()
+    local animator = hum:WaitForChild("Animator")
+    
+    local anim = Instance.new("Animation")
+    anim.AnimationId = "rbxassetid://215384594"
+    local anim1 = Instance.new("Animation")
+    anim1.AnimationId = "rbxassetid://279229192"
+    
+    local track = animator:LoadAnimation(anim)
+    track:Play()
+    track.TimePosition = 2
+    track:AdjustSpeed(0)
+    local track1 = animator:LoadAnimation(anim1)
+    track1:Play()
+    track1.TimePosition = 2
+    track1:AdjustSpeed(0)
+end
+
 local function arrest(arg)
     if not counttp() then
         return
@@ -505,6 +524,8 @@ local function arrest(arg)
         end
         localp.Backpack.Handcuffs.Parent = ch1
     end
+    
+    animh()
 
     for i = 1, 15 do
         if not target.Parent or not ch.Parent then
@@ -514,7 +535,9 @@ local function arrest(arg)
         hp.CFrame = target.CFrame
         event:InvokeServer(player, 1)
     end
-    
+    for _, trac in pairs(gethm():GetPlayingAnimationTracks()) do
+        trac:Stop()
+    end
     hp.CFrame = og
 end
 
@@ -551,19 +574,13 @@ local function kill(arg)
     local hm = gethm()
     local og = hp.CFrame
     
-    local hm = gethm()
-    local anim = Instance.new('Animation')
-    anim.AnimationId = 'rbxassetid://279229192'
-    anim.Name = 'HelperAnim'
-    anim.Parent = hm
-    local track = hm:LoadAnimation(anim)
-    track:Play()
+    animh()
     
     local Event = storage.meleeEvent
     repeat
         if hm.Health == 0 then
-            task.wait(players.RespawnTime)
-            kill(arg)
+            cam.CameraSubject = gethm()
+            break
         end
         cam.CameraSubject = ch.Humanoid
         hp.CFrame = target.CFrame * CFrame.new(0, -3, 0)
@@ -616,7 +633,7 @@ local function car()
     local Event = storage.Remotes.InteractWithItem
 
     for _, v in pairs(workspace.CarContainer:GetChildren()) do
-        if v.Name == "Squads" then
+        if v.Name == "Squad" then
             v:Destroy()
         end
     end
@@ -637,7 +654,7 @@ local function car()
     local seat = carModel:FindFirstChildWhichIsA("VehicleSeat", true) or carModel:FindFirstChildWhichIsA("Seat", true)
 
     if seat then
-        hp.CFrame = seat.CFrame * CFrame.new(0,0,-2)
+        hp.CFrame = seat.CFrame
         task.wait(0.5)
     else
         notify("Car", "No seat found", 5)
@@ -661,7 +678,7 @@ local function car()
 
     for _, v in pairs(parts) do
         if v ~= hp then
-            v.CFrame = og * CFrame.new(0, 5, 0)
+            v.CFrame = og * CFrame.new(0, 15, 0)
         end
     end
     
@@ -673,30 +690,48 @@ local function car()
 
     task.wait(0.2)
     hp.CFrame = og
+    task.wait()
+    local seat1;
     
-    for i = 1, 50 do
-        seat:Sit(hm)
-        task.wait()
+    for _, v in pairs(body:GetChildren()) do
+        if v.Name == 'VehicleSeat' then
+            seat1 = v
+        end
+    end
+
+    if seat1 then
+        hp.CFrame = seat1.CFrame
+        task.wait(0.5)
+    else
+        notify("Car", "No seat found", 5)
+        task.wait(1)
+        return
+    end
+end
+
+local function antihelper()
+    local cars = workspace:FindFirstChild("CarContainer")
+    if not cars then return end
+
+    for _, car in ipairs(cars:GetChildren()) do
+        local wheels = car:FindFirstChild("Wheels", true)
+
+        for _, v in ipairs(car:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = wheels and v:IsDescendantOf(wheels) or false
+            end
+        end
+    end
+end
+
+local function antikick()
+    while task.wait(0.1) do
+        pcall(antihelper)
     end
 end
 
 local function kickhelper(hum)
-    return hum.SeatPart:IsA('VehicleSeat')
-end
-
-local function antisit(bool)
-    if not bool then
-        antisitconn:Disconnect()
-    end
-    
-    local hm = gethm()
-    
-    antisitconn = run.Heartbeat:Connect(function()
-        if hm and hm.Sit then
-            hm.Sit = false
-            hm:ChangeState(Enum.HumanoidStateType.GettingUp)
-        end
-    end)
+    return hum.SeatPart ~= nil
 end
 
 local function kick(arg)
@@ -710,32 +745,73 @@ local function kick(arg)
         return
     end
     
-    local ch1 = player.Character
-    local hm1 = ch1.Humanoid
-    
-    local bool = kickhelper(hm1)
-    
-    if not bool then
-        notify('Kick', 'Player Is Not In A Car', 5)
+    local be = kickhelper(player.Character.Humanoid)
+    if be then
+        notify('Kick', 'Player is seated, cant do', 5)
         return
     end
     
     local ch = getch()
     local hp = gethp()
-    local hp1 = ch1.HumanoidRootPart
+    local hm = gethm()
     local og = hp.CFrame
-    local og1 = hp.Velocity
-    hp.Velocity = Vector3.new(0,10000,0)
-    task.wait()
-    antisit(true)
-    for i = 1,50 do
-        hp.CFrame = hp1.CFrame * CFrame.new(1,-1,1)
-        task.wait()
+    local cf = CFrame.new(624, 98, 2495)
+    local Event = storage.Remotes.InteractWithItem
+
+    for _, v in pairs(workspace.CarContainer:GetChildren()) do
+        if v.Name == "Squad" then
+            v:Destroy()
+        end
     end
-    task.wait()
-    hp.CFrame = og
-    hp.Velocity = og1
-    antisit(false)
+
+    hp.CFrame = cf
+    task.wait(0.2)
+
+    Event:InvokeServer(
+        workspace.Prison_ITEMS.buttons:GetChildren()[4]["Car Spawner"]
+    )
+
+    local cars = workspace.CarContainer
+    local carModel = cars:WaitForChild("Squad")
+    local body = carModel:WaitForChild("Body")
+    local seat = body:WaitForChild('VehicleSeat')
+    
+    local parts = {}
+
+    for _, v in pairs(body:GetDescendants()) do
+        if v:IsA("BasePart") then
+            table.insert(parts, v)
+        end
+    end
+
+    if #parts == 0 then
+        notify("Car", "No car parts found", 5)
+        hp.CFrame = og
+        return
+    end
+    
+    hp.CFrame = seat.CFrame
+    task.wait(0.3)    
+    for _, v in pairs(parts) do
+        if v then
+            v.Velocity = Vector3.new(500000,50000000,5000000)
+            repeat v.CFrame = player.Character.HumanoidRootPart.CFrame * CFrame.new(4.5,2,0) task.wait() v.CFrame = player.Character.HumanoidRootPart.CFrame * CFrame.new(0,1,4.5) until kickhelper(player.Character.Humanoid)
+        end
+    end
+    
+    repeat task.wait() until carModel:FindFirstChild('Wheels')
+    
+    for _, v in pairs(carModel.Wheels:GetChildren()) do
+        v.CFrame = body.Main.CFrame
+    end
+    
+    local Spin = Instance.new("BodyAngularVelocity")
+	Spin.Name = "Spinning"
+	Spin.Parent = hp
+	Spin.MaxTorque = Vector3.new(0, math.huge, 0)
+	Spin.AngularVelocity = Vector3.new(0,5000,0)
+	task.wait(0.3)
+	Spin:Destroy()
 end
 
 local function goto(arg)
@@ -854,12 +930,7 @@ local function loopk(arg)
         
         local og = gethp().CFrame
         
-        local anim = Instance.new('Animation')
-        anim.AnimationId = 'rbxassetid://279229192'
-        anim.Name = 'HelperAnim'
-        anim.Parent = gethm()
-        local track = gethm():LoadAnimation(anim)
-        track:Play()
+        animh()
         
         local Event = storage.meleeEvent
         repeat
@@ -931,6 +1002,93 @@ local function armory()
     local hp = gethp()
     local cf = CFrame.new(829, 100, 2244)
     hp.CFrame = cf
+end
+
+local viewconn
+
+local function view(arg)
+    local plr, err = findpl(arg)
+    if not plr then
+        notify("View", err, 5)
+        return
+    end
+
+    if viewconn then
+        viewconn:Disconnect()
+        viewconn = nil
+    end
+
+    local function setview(ch)
+        local hm = ch:WaitForChild("Humanoid", 5)
+        if hm then
+            workspace.CurrentCamera.CameraSubject = hm
+        end
+    end
+
+    if plr.Character then
+        setview(plr.Character)
+    end
+
+    viewconn = plr.CharacterAdded:Connect(setview)
+    notify("View", "Viewing " .. plr.Name, 3)
+end
+
+local function unview()
+    if viewconn then
+        viewconn:Disconnect()
+        viewconn = nil
+    end
+
+    local ch = localp.Character or localp.CharacterAdded:Wait()
+    local hm = ch:WaitForChild("Humanoid")
+    workspace.CurrentCamera.CameraSubject = hm
+
+    notify("View", "Returned to your character", 3)
+end
+
+local antitasebool = false
+local antitaseconn
+
+local function antits()
+    antitasebool = not antitasebool
+
+    if antitasebool then
+        local function apply()
+            if not antitasebool then return end
+
+            pcall(function()
+                local fn = filtergc("function", {
+                    Name = "taze"
+                }, true)
+
+                if fn then
+                    hookfunction(fn, function()
+                        return true
+                    end)
+                end
+            end)
+        end
+
+        apply()
+
+        if antitaseconn then
+            antitaseconn:Disconnect()
+        end
+
+        antitaseconn = localp.CharacterAdded:Connect(function()
+            task.wait(1)
+            apply()
+        end)
+
+        notify("AntiTase", "Enabled", 3)
+    else
+        if antitaseconn then
+            antitaseconn:Disconnect()
+            antitaseconn = nil
+        end
+
+        notify("AntiTase", "Disabled", 3)
+    end
 end
 
 local function silent()
@@ -1263,19 +1421,27 @@ local cmds = {
 	"removedoors / rdoors",
 	"arrest <player name> (shortcut names supported)",
 	"infjump / uninfjump",
-	"kick <player name> (broken) (shortcut names supported)",
+	"kick <player name> (must not be inside prison) (shortcut names supported)",
 	"bring <player name> (soon maybe)",
 	"kill <player name> (shortcut names supported)",
 	"loopkill <player name> (shortcut names supported)",
-	"unloopkill <player name> (shortcut names supported)",
+	"unloopkill",
 	"car (must not be in prison)",
 	"walkspeed <number> / speed <number>",
-	"jumppower <number> / jumpp <number>",
+	"jumpheight <number> / jumph <number>",
 	"esp",
     "unesp",
     "silentaim",
     "ignorecd (ignores cooldown for tps)",
     "unignorecd",
+    "antikick (car flings)",
+    "boost (boosts walkspeed and jump)",
+    "unboost",
+    "fov <number> (70 original)",
+    "antitase",
+    "unantitase",
+    "view <player name>",
+    "unview",
 }
 
 local gui=Instance.new("ScreenGui")
@@ -1548,16 +1714,41 @@ local function runcommand(msg, frombar)
         ignore = false
     elseif cmd == "car" then
         task.spawn(car)
+    elseif cmd == "view" and arg ~= "" then
+        view(arg)
+    elseif cmd == "unview" then
+        unview()
     elseif cmd == "goto" or cmd == "to" then
         if arg ~= "" then
             goto(arg)
         end
+    elseif cmd == "boost" then
+        boosting = true
+        task.spawn(function()
+            while boosting do
+                local hm = gethm()
+                hm.WalkSpeed = 30
+                hm.JumpHeight = 30
+                task.wait()
+            end
+        end)
+    elseif cmd == "unboost" then
+        boosting = false
+        local hm = gethm()
+        hm.WalkSpeed = 16
+        hm.JumpHeight = 5.5
     elseif cmd == "esp" then
         espstart()
     elseif cmd == "unesp" then
         espstop()
     elseif cmd == "silentaim" then
         silent()
+    elseif cmd == "antitase" then
+        antits()
+    elseif cmd == "unantitase" then
+        if antitasebool then
+            antits()
+        end
     elseif cmd == "unsilentaim" then
         silentAimEnabled = false
     elseif cmd == "arrest" and arg ~= "" then
@@ -1576,10 +1767,15 @@ local function runcommand(msg, frombar)
         if n then
             gethm().WalkSpeed = n
         end
-    elseif cmd == "jumppower" or cmd == "jumpp" then
+    elseif cmd == "jumpheight" or cmd == "jumph" then
         local n = tonumber(arg)
         if n then
-            gethm().JumpPower = n
+            gethm().JumpHeight = n
+        end
+    elseif cmd == "fov" then
+        local n = tonumber(arg)
+        if n then
+            workspace.CurrentCamera.FieldOfView = n
         end
     end
 end
@@ -1605,4 +1801,5 @@ task.spawn(function()
             Duration = 10
         })
     end)
+    antikick()
 end)
