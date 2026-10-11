@@ -13,10 +13,10 @@ local antisitconn;
 local loopkill = false
 
 local tps = 0
-local tplimit = 6
-local tpcooldown = false
-local tpdelay = 8
-local lasttp = 0
+local tplimit = 8
+local tpreset = 30
+local tpblocked = false
+local tpgen = 0
 
 local ignore = false
 
@@ -95,35 +95,34 @@ local function counttp()
     if ignore then
         return true
     end
-    
-    local now = tick()
-    local remaining = tpdelay - (now - lasttp)
-    
-    if remaining > 0 then
-        notify("Teleport", "Wait " .. math.ceil(remaining) .. " seconds before another TP", 5)
-        return false
-    end
-    
-    if tpcooldown then
+    if tpblocked then
         return false
     end
 
-    tps = tps + 1
+    tps += 1
+    tpgen += 1
+
+    local gen = tpgen
+
+    task.delay(tpreset, function()
+        if tpgen == gen and not tpblocked then
+            tps = 0
+        end
+    end)
 
     if tps >= tplimit then
-        tpcooldown = true
-        notify("Teleport Limit", "Please wait 30 seconds before teleporting again", 10)
+        tpblocked = true
+        notify("TP Limit", "TP limit reached! Wait 20 seconds.", 5)
 
-        task.delay(30, function()
+        task.delay(20, function()
             tps = 0
-            tpcooldown = false
-            notify("Teleport Limit", "Teleport limit resetted, ur free", 5)
+            tpblocked = false
+            tpgen += 1
         end)
 
         return false
     end
-    
-    lasttp = now
+
     return true
 end
 
@@ -202,9 +201,6 @@ local function autore()
     while autorebool do
         local hm = gethm()
         if hm and hm.Health == 0 then
-            if not counttp() then
-                return
-            end
             local ch = getch()
             local hp = gethp()
             local og = hp.CFrame
@@ -214,6 +210,9 @@ local function autore()
             local newhp = gethp()
             if ch:FindFirstChild('ForceField') and localp.Team.Name == 'Criminals' then
                 repeat task.wait(0.1) until not ch:FindFirstChild('ForceField')
+            end
+            if not counttp() then
+                return
             end
             newhp.CFrame = og
             cam.CFrame = ogcam
@@ -379,13 +378,13 @@ local function base()
 end
 
 local function yard()
-    if not counttp() then
-        return
-    end
     local ch = getch()
     if ch:FindFirstChild('ForceField') then
         notify('Teleport', 'Please Wait For ForceField To Expire', 5)
         repeat task.wait(0.1) until not ch:FindFirstChild('ForceField')
+    end
+    if not counttp() then
+        return
     end
     local hp = gethp()
     local cf = CFrame.new(799, 98, 2469)
@@ -393,13 +392,13 @@ local function yard()
 end
 
 local function prison()
-    if not counttp() then
-        return
-    end
     local ch = getch()
     if ch:FindFirstChild('ForceField') then
         notify('Teleport', 'Please Wait For ForceField To Expire', 5)
         repeat task.wait(0.1) until not ch:FindFirstChild('ForceField')
+    end
+    if not counttp() then
+        return
     end
     local hp = gethp()
     local cf = CFrame.new(913, 100, 2385)
@@ -407,13 +406,13 @@ local function prison()
 end
 
 local function cafeteria()
-    if not counttp() then
-        return
-    end
     local ch = getch()
     if ch:FindFirstChild('ForceField') then
         notify('Teleport', 'Please Wait For ForceField To Expire', 5)
         repeat task.wait(0.1) until not ch:FindFirstChild('ForceField')
+    end
+    if not counttp() then
+        return
     end
     local hp = gethp()
     local cf = CFrame.new(906, 100, 2298)
@@ -421,13 +420,13 @@ local function cafeteria()
 end
 
 local function tower()
-    if not counttp() then
-        return
-    end
     local ch = getch()
     if ch:FindFirstChild('ForceField') then
         notify('Teleport', 'Please Wait For ForceField To Expire', 5)
         repeat task.wait(0.1) until not ch:FindFirstChild('ForceField')
+    end
+    if not counttp() then
+        return
     end
     local hp = gethp()
     local cf = CFrame.new(822, 125, 2588)
@@ -525,6 +524,10 @@ local function arrest(arg)
         localp.Backpack.Handcuffs.Parent = ch1
     end
     
+    if not counttp() then
+        return
+    end
+    
     animh()
 
     for i = 1, 15 do
@@ -542,9 +545,6 @@ local function arrest(arg)
 end
 
 local function kill(arg)
-    if not counttp() then
-        return
-    end
     local player, err = findpl(arg)
     if not player then
         notify('Kill', err, 5)
@@ -561,6 +561,10 @@ local function kill(arg)
     if ch:FindFirstChild('ForceField') then
         notify('Kill', 'Please Wait For ForceField To Expire', 5)
         repeat task.wait(0.1) until not ch:FindFirstChild('ForceField')
+    end
+    
+    if not counttp() then
+        return
     end
     
     local ch1 = getch()
@@ -731,93 +735,201 @@ local function antikick()
 end
 
 local function kickhelper(hum)
-    return hum.SeatPart ~= nil
+    return hum and hum.SeatPart ~= nil
+end
+
+local function handlemissingcar(cars)
+    if cars and cars:FindFirstChild("Squad") then
+        return false
+    end
+
+    local ch = localp.Character
+    local hm = ch and ch:FindFirstChildOfClass("Humanoid")
+
+    if hm and hm.Health > 0 then
+        hm.Health = 0
+    end
+
+    return true
 end
 
 local function kick(arg)
+    local player, err = findpl(arg)
+    if not player then
+        notify("Kick", err, 5)
+        return
+    end
+
+    local targetChar = player.Character
+    local targetHum = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
+
+    if not targetHum then
+        notify("Kick", "Couldnt find humanoid", 5)
+        return
+    end
+
+    if kickhelper(targetHum) then
+        notify("Kick", "Player is seated, cant do", 5)
+        return
+    end
+
     if not counttp() then
         return
     end
-    local player, err = findpl(arg)
 
-    if not player then
-        notify('Kick', err, 5)
+    local cars = workspace:FindFirstChild("CarContainer")
+    if not cars then
+        notify("Kick", "CarContainer not found", 5)
         return
     end
-    
-    local be = kickhelper(player.Character.Humanoid)
-    if be then
-        notify('Kick', 'Player is seated, cant do', 5)
-        return
-    end
-    
-    local ch = getch()
-    local hp = gethp()
-    local hm = gethm()
-    local og = hp.CFrame
-    local cf = CFrame.new(624, 98, 2495)
-    local Event = storage.Remotes.InteractWithItem
 
-    for _, v in pairs(workspace.CarContainer:GetChildren()) do
+    for _, v in ipairs(cars:GetChildren()) do
         if v.Name == "Squad" then
             v:Destroy()
         end
     end
 
-    hp.CFrame = cf
+    local hp = gethp()
+    local Event = storage.Remotes.InteractWithItem
+
+    hp.CFrame = CFrame.new(624, 98, 2495)
     task.wait(0.2)
 
-    Event:InvokeServer(
-        workspace.Prison_ITEMS.buttons:GetChildren()[4]["Car Spawner"]
-    )
+    local buttons = workspace:FindFirstChild("Prison_ITEMS")
+    buttons = buttons and buttons:FindFirstChild("buttons")
+    local spawner = buttons and buttons:GetChildren()[4]
+    spawner = spawner and spawner:FindFirstChild("Car Spawner")
 
-    local cars = workspace.CarContainer
-    local carModel = cars:WaitForChild("Squad")
-    local body = carModel:WaitForChild("Body")
-    local seat = body:WaitForChild('VehicleSeat')
-    
+    if not spawner then
+        notify("Kick", "Car spawner not found", 5)
+        return
+    end
+
+    local ok = pcall(function()
+        Event:InvokeServer(spawner)
+    end)
+
+    if not ok then
+        notify("Kick", "Car spawn failed", 5)
+        return
+    end
+
+    local carModel = cars:WaitForChild("Squad", 5)
+    if not carModel or handlemissingcar(cars) then
+        notify("Kick", "Car disappeared or failed to spawn", 5)
+        return
+    end
+
+    local body = carModel:FindFirstChild("Body")
+    local seat = body and body:FindFirstChild("VehicleSeat")
+
+    if not body or not seat then
+        notify("Kick", "Car body or seat missing", 5)
+        return
+    end
+
     local parts = {}
 
-    for _, v in pairs(body:GetDescendants()) do
+    for _, v in ipairs(body:GetDescendants()) do
         if v:IsA("BasePart") then
             table.insert(parts, v)
         end
     end
 
     if #parts == 0 then
-        notify("Car", "No car parts found", 5)
-        hp.CFrame = og
+        handlemissingcar(cars)
         return
     end
-    
+
+    hp = gethp()
     hp.CFrame = seat.CFrame
-    task.wait(0.3)    
-    for _, v in pairs(parts) do
-        if v then
-            v.Velocity = Vector3.new(500000,50000000,5000000)
-            repeat v.CFrame = player.Character.HumanoidRootPart.CFrame * CFrame.new(4.5,2,0) task.wait() v.CFrame = player.Character.HumanoidRootPart.CFrame * CFrame.new(0,1,4.5) until kickhelper(player.Character.Humanoid)
+    task.wait(0.3)
+
+    for _, v in ipairs(parts) do
+        if handlemissingcar(cars) then
+            return
+        end
+
+        if v and v.Parent then
+            local success = pcall(function()
+                v.Velocity = Vector3.new(500000, 5000000, 50000000)
+
+                repeat
+                    if handlemissingcar(cars) then
+                        return
+                    end
+
+                    local ch = player.Character
+                    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+                    if not hrp then
+                        break
+                    end
+
+                    v.CFrame = hrp.CFrame * CFrame.new(4.5, 2, 0)
+                    task.wait()
+                until kickhelper(ch:FindFirstChildOfClass("Humanoid"))
+            end)
+
+            if not success and handlemissingcar(cars) then
+                return
+            end
         end
     end
-    
-    repeat task.wait() until carModel:FindFirstChild('Wheels')
-    
-    for _, v in pairs(carModel.Wheels:GetChildren()) do
-        v.CFrame = body.Main.CFrame
+
+    local deadline = os.clock() + 5
+
+    repeat
+        if handlemissingcar(cars) then
+            return
+        end
+
+        if carModel:FindFirstChild("Wheels") then
+            break
+        end
+
+        task.wait(0.05)
+    until os.clock() >= deadline
+
+    if handlemissingcar(cars) then
+        return
     end
-    
-    local Spin = Instance.new("BodyAngularVelocity")
-	Spin.Name = "Spinning"
-	Spin.Parent = hp
-	Spin.MaxTorque = Vector3.new(0, math.huge, 0)
-	Spin.AngularVelocity = Vector3.new(0,5000,0)
-	task.wait(0.3)
-	Spin:Destroy()
+
+    local wheels = carModel:FindFirstChild("Wheels")
+    local main = body:FindFirstChild("Main")
+
+    if wheels and main then
+        for _, v in ipairs(wheels:GetChildren()) do
+            if v:IsA("BasePart") then
+                pcall(function()
+                    v.CFrame = main.CFrame
+                end)
+            end
+        end
+    end
+
+    if handlemissingcar(cars) then
+        return
+    end
+
+    local ch = localp.Character
+    local hm = ch and ch:FindFirstChildOfClass("Humanoid")
+    hp = ch and ch:FindFirstChild("HumanoidRootPart")
+
+    if hm and hp and hm.Health > 0 then
+        local spin = Instance.new("BodyAngularVelocity")
+        spin.Name = "Spinning"
+        spin.MaxTorque = Vector3.new(0, math.huge, 0)
+        spin.AngularVelocity = Vector3.new(0, 5000, 0)
+        spin.Parent = hp
+
+        task.wait(0.3)
+        spin:Destroy()
+    end
+
+    handlemissingcar(cars)
 end
 
 local function goto(arg)
-    if not counttp() then
-        return
-    end
     local player, err = findpl(arg)
 
     if not player then
@@ -835,6 +947,10 @@ local function goto(arg)
         return
     end
     
+    if not counttp() then
+        return
+    end
+    
     local ch = getch()
     local hp = gethp()
     
@@ -845,14 +961,15 @@ local function goto(arg)
 end
 
 local function hammer()
-    if not counttp() then
-        return
-    end
     if not workspace:FindFirstChild('Hammer') then
         notify('Hammer', 'Please Wait For It To Spawn', 5)
         repeat
             task.wait(0.1)
         until workspace:FindFirstChild('Hammer')
+    end
+    
+    if not counttp() then
+        return
     end
     
     local item = workspace:FindFirstChild('Hammer').ITEMPICKUP
@@ -877,14 +994,15 @@ local function hammer()
 end
 
 local function knife()
-    if not counttp() then
-        return
-    end
     if not workspace:FindFirstChild('Crude Knife') then
         notify('Crude Knife', 'Please Wait For It To Spawn', 5)
         repeat
             task.wait(0.1)
         until workspace:FindFirstChild('Crude Knife')
+    end
+    
+    if not counttp() then
+        return
     end
     
     local item = workspace:FindFirstChild('Crude Knife').ITEMPICKUP
@@ -991,13 +1109,13 @@ local function getf()
 end
 
 local function armory()
-    if not counttp() then
-        return
-    end
     local ch = getch()
     if ch:FindFirstChild('ForceField') then
         notify('Teleport', 'Please Wait For ForceField To Expire', 5)
         repeat task.wait(0.1) until not ch:FindFirstChild('ForceField')
+    end
+    if not counttp() then
+        return
     end
     local hp = gethp()
     local cf = CFrame.new(829, 100, 2244)
@@ -1530,8 +1648,8 @@ st.Parent=bar
 
 local menu = Instance.new("Frame")
 menu.Name = "CommandsMenu"
-menu.Size = UDim2.new(0.78, 0, 0.62, 0)
-menu.Position = UDim2.new(0.11, 0, 0.19, 0)
+menu.Size = UDim2.new(0.78, 0, 0.78, 0)
+menu.Position = UDim2.new(0.11, 0, 0.11, 0)
 menu.BackgroundColor3 = Color3.fromRGB(48, 48, 48)
 menu.BorderSizePixel = 0
 menu.Visible = false
