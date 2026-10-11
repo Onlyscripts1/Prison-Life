@@ -1,4 +1,4 @@
--- This script is made by feariosz0 in discord, beta v1.0.6
+-- This script is made by feariosz0 in discord, beta v1.0.7
 
 local noclipbool = false
 local infstambool = false
@@ -587,12 +587,13 @@ local function kill(arg)
             break
         end
         cam.CameraSubject = ch.Humanoid
-        hp.CFrame = target.CFrame * CFrame.new(0, -3, 0)
+        hp.CFrame = target.CFrame * CFrame.new(0, -2.5, 0)
         Event:FireServer(
             player,
             1,
             1
         )
+        hm:ChangeState(3)
         task.wait()
     until ch.Humanoid.Health == 0
     for _, trac in pairs(gethm():GetPlayingAnimationTracks()) do
@@ -736,6 +737,130 @@ end
 
 local function kickhelper(hum)
     return hum and hum.SeatPart ~= nil
+end
+
+local function bring(arg)
+    local player, err = findpl(arg)
+    if not player then
+        notify("Kick", err, 5)
+        return
+    end
+
+    local targetChar = player.Character
+    local targetHum = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
+
+    if not targetHum then
+        notify("Kick", "Couldnt find humanoid", 5)
+        return
+    end
+
+    if kickhelper(targetHum) then
+        notify("Kick", "Player is seated, cant do", 5)
+        return
+    end
+    if not counttp() then
+        return
+    end
+    local ch = getch()
+    local hp = gethp()
+    local hm = gethm()
+    local og = hp.CFrame
+    local cf = CFrame.new(624, 98, 2495)
+    local Event = storage.Remotes.InteractWithItem
+
+    for _, v in pairs(workspace.CarContainer:GetChildren()) do
+        if v.Name == "Squad" then
+            v:Destroy()
+        end
+    end
+
+    hp.CFrame = cf
+    task.wait(0.2)
+
+    Event:InvokeServer(
+        workspace.Prison_ITEMS.buttons:GetChildren()[4]["Car Spawner"]
+    )
+
+    local cars = workspace.CarContainer
+    local carModel = cars:WaitForChild("Squad")
+    local body = carModel:WaitForChild("Body")
+
+    task.wait(0.5)
+
+    local seat;
+    
+    for _, v in pairs(body:GetChildren()) do
+        if v.Name == 'VehicleSeat' then
+            seat = v
+        end
+    end
+
+    if seat then
+        hp.CFrame = seat.CFrame
+        task.wait(0.5)
+    else
+        notify("Car", "No seat found", 5)
+        task.wait(1)
+        return
+    end
+
+    local parts = {}
+
+    for _, v in pairs(body:GetDescendants()) do
+        if v:IsA("BasePart") then
+            table.insert(parts, v)
+        end
+    end
+
+    if #parts == 0 then
+        notify("Car", "No car parts found", 5)
+        hp.CFrame = og
+        return
+    end
+
+    repeat
+        for _, v in pairs(parts) do
+            if v ~= hp then
+                v.CFrame = targetChar.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0)
+            end
+        end
+            
+        task.wait(0.1)
+        
+        for _, v in pairs(carModel.Wheels:GetChildren()) do
+            v.CFrame = body.Main.CFrame
+        end
+        
+        for _, v in pairs(parts) do
+            if v ~= hp then
+                v.CFrame = og * CFrame.new(0, 15, 0)
+            end
+        end
+        
+        task.wait(0.1)
+        
+        for _, v in pairs(carModel.Wheels:GetChildren()) do
+            v.CFrame = body.Main.CFrame
+        end
+    until kickhelper(targetHum)
+
+    task.wait()
+    local seat1;
+    
+    for _, v in pairs(body:GetChildren()) do
+        if v.Name == 'VehicleSeat' then
+            seat1 = v
+        end
+    end
+
+    if seat1 then
+        hp.CFrame = seat1.CFrame
+        task.wait(0.5)
+    else
+        notify("Car", "No seat found", 5)
+        task.wait(1)
+        return
+    end
 end
 
 local function handlemissingcar(cars)
@@ -1059,12 +1184,13 @@ local function loopk(arg)
                 repeat task.wait(0.1) until player.Character:FindFirstChildOfClass('Humanoid')
             end
             cam.CameraSubject = player.Character.Humanoid
-            gethp().CFrame = player.Character:WaitForChild('HumanoidRootPart').CFrame * CFrame.new(0, -3, 0)
+            gethp().CFrame = player.Character:WaitForChild('HumanoidRootPart').CFrame * CFrame.new(0, -2.5, 0)
             Event:FireServer(
                 player,
                 1,
                 1
             )
+            hm:ChangeState(3)
             task.wait()
         until player.Character:WaitForChild('Humanoid').Health == 0
         for _, trac in pairs(gethm():GetPlayingAnimationTracks()) do
@@ -1540,7 +1666,7 @@ local cmds = {
 	"arrest <player name> (shortcut names supported)",
 	"infjump / uninfjump",
 	"kick <player name> (must not be inside prison) (shortcut names supported)",
-	"bring <player name> (soon maybe)",
+	"bring <player name>",
 	"kill <player name> (shortcut names supported)",
 	"loopkill <player name> (shortcut names supported)",
 	"unloopkill",
@@ -1873,6 +1999,8 @@ local function runcommand(msg, frombar)
         task.spawn(arrest, arg)
     elseif cmd == "kill" and arg ~= "" then
         task.spawn(kill, arg)
+    elseif cmd == "bring" and arg ~= "" then
+        task.spawn(bring, arg)
     elseif cmd == "loopkill" and arg ~= "" then
         loopkill = true
         task.spawn(loopk, arg)
