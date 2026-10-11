@@ -38,6 +38,7 @@ local gui = gets('StarterGui')
 local run = gets('RunService')
 local input = gets('UserInputService')
 local texts = gets('TextChatService')
+local core = gets('CoreGui')
 
 local textcs = texts:WaitForChild("TextChannels"):WaitForChild("RBXGeneral")
 
@@ -2243,6 +2244,40 @@ bar.FocusLost:Connect(function(enterPressed)
         bar.Text = ""
         runcommand(msg, true)
     end
+end)
+
+local hideBtn = Instance.new("TextButton")
+hideBtn.Name = "HideButton"
+hideBtn.Size = UDim2.new(0, 34, 0, 34)
+hideBtn.Position = core.TopBarApp.TopBarApp.TopBarFrame.LeftFrame.Position + UDim2.new(0,210,0,-42)
+hideBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+hideBtn.Text = "−"
+hideBtn.TextColor3 = Color3.new(1, 1, 1)
+hideBtn.TextSize = 22
+hideBtn.Parent = gui
+
+local restoreBtn = Instance.new("ImageButton")
+restoreBtn.Name = "RestoreButton"
+restoreBtn.Size = UDim2.new(0, 34, 0, 34)
+restoreBtn.Position = hideBtn.Position
+restoreBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+restoreBtn.Image = "rbxassetid://131890774532975"
+restoreBtn.Visible = false
+restoreBtn.Parent = gui
+
+hideBtn.MouseButton1Click:Connect(function()
+    btn.Visible = false
+    bar.Visible = false
+    menu.Visible = false
+    hideBtn.Visible = false
+    restoreBtn.Visible = true
+end)
+
+restoreBtn.MouseButton1Click:Connect(function()
+    btn.Visible = true
+    bar.Visible = true
+    hideBtn.Visible = true
+    restoreBtn.Visible = false
 end)
 
 task.spawn(function()
