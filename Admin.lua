@@ -1,4 +1,4 @@
--- This script is made by feariosz0 in discord, v1.1.0
+-- This script is made by feariosz0 in discord, v1.1.1
 
 local noclipbool = false
 local infstambool = false
@@ -272,7 +272,6 @@ local function autore()
             ignore = true
             change(localp.Team.Name)
             repeat task.wait() until getch():FindFirstChildOfClass('Humanoid')
-            task.wait(0.1)
             if getch():FindFirstChild('ForceField') and ogt == 'Criminals' then
                 repeat task.wait() until not getch():FindFirstChild('ForceField')
             end
@@ -574,18 +573,23 @@ local function arrest(arg)
     end
 
     local ch = player.Character
-    local target = ch and ch:FindFirstChild('HumanoidRootPart')
+    local target = ch:FindFirstChild('HumanoidRootPart')
 
     if not target then
         notify('Arrest', 'Target Character Not Found', 5)
         return
     end
     
+    local sh = ch:GetAttribute('Hostile')
+    if not sh then
+        notify('Arrest', 'Cant arrest player, not a hostile', 5)
+    end
+    
     local ogt = localp.Team.Name
     
     if localp.Team.Name ~= 'Guards' then
         change('Guards')
-        repeat task.wait() until localp:FindFirstChild('Backpack'):FindFirstChild('Handcuffs')
+        repeat task.wait(0.1) until localp:FindFirstChild('Backpack'):FindFirstChild('Handcuffs')
     end
 
     local event = storage.Remotes.ArrestPlayer
@@ -620,19 +624,15 @@ local function arrest(arg)
     animh()
 
     for i = 1, 10 do
-        if not target.Parent or not ch.Parent then
-            break
-        end
-
+        event:InvokeServer(player,1)
         hp.CFrame = target.CFrame
-        event:InvokeServer(player, 1)
     end
     for _, trac in pairs(gethm():GetPlayingAnimationTracks()) do
         trac:Stop()
     end
     change(ogt)
-    task.wait(0.5)
-    hp.CFrame = og
+    repeat task.wait() until getch():FindFirstChild('HumanoidRootPart')
+    gethp().CFrame = og
 end
 
 local function kill(arg)
@@ -641,6 +641,8 @@ local function kill(arg)
         notify('Kill', err, 5)
         return
     end
+    
+    local ogt = localp.Team.Name
     
     local ch = player.Character
     local target = ch:FindFirstChild('HumanoidRootPart')
@@ -656,6 +658,10 @@ local function kill(arg)
     
     if not counttp() then
         return
+    end
+    
+    if player.Team.Name == 'Guards' and localp.Team.Name == 'Guards' then
+        change('Inmates')
     end
     
     local ch1 = getch()
@@ -678,17 +684,20 @@ local function kill(arg)
             break
         end
         cam.CameraSubject = ch.Humanoid
-        hp.CFrame = target.CFrame * CFrame.new(0, -2.5, 0)
         Event:FireServer(
             player,
             1,
             1
         )
+        hp.CFrame = target.CFrame * CFrame.new(0, -2.5, 0)
         hm:ChangeState(3)
         task.wait()
     until ch.Humanoid.Health == 0
     for _, trac in pairs(gethm():GetPlayingAnimationTracks()) do
         trac:Stop()
+    end
+    if ogt == 'Guards' then
+        change(ogt)
     end
     hp.CFrame = og
     cam.CameraSubject = gethm()
@@ -854,6 +863,18 @@ local function bring(arg)
         return
     end
     
+    if localp.Team.Name == 'Criminals' then
+        local Event = storage.Remotes.RequestTeamChange
+        Event:InvokeServer(team.Neutral,1)
+    end
+    
+    repeat
+        local Event = storage.Remotes.RequestTeamChange
+        Event:InvokeServer(team.Guards,1)
+        task.wait()
+        Event:InvokeServer(team.Inmates,1)
+    until localp.Team.Name == 'Inmates' or localp.Team.Name == 'Guards'
+    
     local ch = getch()
     local hp = gethp()
     local hm = gethm()
@@ -878,7 +899,7 @@ local function bring(arg)
     local ok = pcall(function()
         repeat
             Event:InvokeServer(spawner)
-            task.wait()
+            task.wait(0.1)
         until cars:FindFirstChild("Squad", 5)
     end)
 
@@ -922,7 +943,7 @@ local function bring(arg)
     repeat
         for _, v in pairs(parts) do
             if v ~= hp then
-                v.CFrame = targetChar.Head.CFrame * CFrame.new(0, 1, 0)
+                v.CFrame = targetChar.Head.CFrame * CFrame.new(0, 5, 0) * CFrame.Angles(math.rad(90),0,0)
             end
         end
          
@@ -1012,11 +1033,6 @@ local function kick(arg)
         Event:InvokeServer(team.Inmates,1)
     until localp.Team.Name == 'Inmates' or localp.Team.Name == 'Guards'
     
-    if getch():FindFirstChild('ForceField') then
-        notify('Kick', 'Please Wait For ForceField To Expire', 5)
-        repeat task.wait(0.1) until not getch():FindFirstChild('ForceField')
-    end
-    
     if not counttp() then
         return
     end
@@ -1049,7 +1065,7 @@ local function kick(arg)
     local ok = pcall(function()
         repeat
             Event:InvokeServer(spawner)
-            task.wait()
+            task.wait(0.1)
         until cars:FindFirstChild("Squad", 5)
     end)
 
@@ -1262,6 +1278,8 @@ local function loopk(arg)
             return
         end
         
+        local ogt = localp.Team.Name
+        
         local ch = player.Character
         if not ch:FindFirstChild('HumanoidRootPart') then
             repeat task.wait() until ch:FindFirstChild('HumanoidRootPart')
@@ -1274,6 +1292,10 @@ local function loopk(arg)
         
         if not counttp() then
             return
+        end
+        
+        if player.Team.Name == 'Guards' and localp.Team.Name == 'Guards' then
+            change('Inmates')
         end
         
         if getch():FindFirstChild('ForceField') then
@@ -1292,18 +1314,21 @@ local function loopk(arg)
             end
             pcall(function()
                 cam.CameraSubject = ch.Humanoid
-                gethp().CFrame = ch:FindFirstChild('HumanoidRootPart').CFrame * CFrame.new(0, -2.5, 0)
                 Event:FireServer(
                     player,
                     1,
                     1
                 )
+                gethp().CFrame = ch:FindFirstChild('HumanoidRootPart').CFrame * CFrame.new(0, -2.5, 0)
                 gethm():ChangeState(3)
                 task.wait()
             end)
         until ch.Humanoid.Health == 0
         for _, trac in pairs(gethm():GetPlayingAnimationTracks()) do
             trac:Stop()
+        end
+        if ogt == 'Guards' then
+            change(ogt)
         end
         gethp().CFrame = og
         cam.CameraSubject = gethm()
