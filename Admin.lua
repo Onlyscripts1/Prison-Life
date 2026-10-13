@@ -1296,10 +1296,10 @@ local function kick2(arg)
                     local hd = ch.Head
                     local hb = ch.Torso
                     
-                    sethiddenproperty(v, "PhysicsRepRootPart", ch.Humanoid.RootPart)
-                    sethiddenproperty(v, "PhysicsRepRootRef", InstanceHandle.new(ch.Humanoid.RootPart))
+                    --sethiddenproperty(v, "PhysicsRepRootPart", ch.Humanoid.RootPart)
+                    --sethiddenproperty(v, "PhysicsRepRootRef", InstanceHandle.new(ch.Humanoid.RootPart))
                     
-                    v.CFrame = hd.CFrame * CFrame.new(-2, 0, 0) * CFrame.Angles(math.rad(90),0,0)
+                    v.CFrame = hd.CFrame * CFrame.new(-2, 0, -1) * CFrame.Angles(math.rad(90),0,0)
                 end
             end)
 
