@@ -1,4 +1,4 @@
--- This script is made by feariosz0 in discord, v1.1.1
+-- This script is made by feariosz0 in discord, v1.1.0
 
 local noclipbool = false
 local infstambool = false
@@ -30,6 +30,9 @@ local automaticbool = false
 local gunmodconn = nil
 local originalGunData = {}
 
+local stopkick = false
+local antishield = false
+
 local tpdelay = 12
 local lasttp = 0
 
@@ -55,6 +58,7 @@ local input = gets('UserInputService')
 local texts = gets('TextChatService')
 local core = gets('CoreGui')
 local TweenService = gets('TweenService')
+local VIM = game:GetService("VirtualInputManager")
 
 local textcs = texts:WaitForChild("TextChannels"):WaitForChild("RBXGeneral")
 
@@ -1148,6 +1152,164 @@ local function kick(arg)
     end
 end
 
+local function handlemissingcar2(cars)
+    if cars and cars:FindFirstChild("Squad") then
+        return false
+    end
+
+    return true
+end
+
+-- kick2 (ripoff vape♥️)
+
+local function isNetworkOwned(part)
+	local isnetowner = (getgenv and getgenv().isnetworkowner) or _G.isnetworkowner or isnetworkowner
+	if typeof(isnetowner) ~= 'function' then return true end
+
+	local success, owned = pcall(isnetowner, part)
+	return success and owned
+end
+
+local function kick2(arg)
+    local player, err = findpl(arg)
+    if not player then
+        notify("Kick", err, 5)
+        return
+    end
+
+    local targetChar = player.Character
+    local targetHum = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
+
+    if not targetHum then
+        notify("Kick", "Couldnt find humanoid", 5)
+        return
+    end
+
+    local cars = workspace:FindFirstChild("CarContainer")
+    if not cars then
+        notify("Kick", "CarContainer not found", 5)
+        return
+    end
+
+    if localp.Team.Name == "Criminals" then
+        local Event = storage.Remotes.RequestTeamChange
+        Event:InvokeServer(team.Neutral, 1)
+    end
+
+    repeat
+        local Event = storage.Remotes.RequestTeamChange
+        Event:InvokeServer(team.Guards, 1)
+        task.wait()
+        Event:InvokeServer(team.Inmates, 1)
+    until localp.Team.Name == "Inmates" or localp.Team.Name == "Guards"
+
+    setMaxSimRadius()
+
+    for _, v in ipairs(cars:GetChildren()) do
+        if v.Name == "Squad" then
+            v:Destroy()
+        end
+    end
+
+    local hp = gethp()
+    local hm = gethm()
+    local Event = storage.Remotes.InteractWithItem
+
+    local buttons = workspace:FindFirstChild("Prison_ITEMS")
+    buttons = buttons and buttons:FindFirstChild("buttons")
+
+    local spawner = buttons and buttons:GetChildren()[4]
+    spawner = spawner and spawner:FindFirstChild("Car Spawner")
+
+    if not spawner then
+        notify("Kick", "Car spawner not found", 5)
+        return
+    end
+    
+    hp.CFrame = spawner.CFrame
+
+    local ok = pcall(function()
+        repeat
+            Event:InvokeServer(spawner)
+            pcall(function() Event:InvokeServer(buttons:GetChildren()[5]['Car Spawner']) end)            
+            local tw = TweenService:Create(hp, TweenInfo.new(0.7), {CFrame = spawner.CFrame})
+            tw:Play()
+            tw.Completed:Wait()
+            task.wait(0.1)
+            local tw2 = TweenService:Create(hp, TweenInfo.new(0.7), {CFrame = CFrame.new(589, 98, 2494)})
+            tw2:Play()
+            tw2.Completed:Wait()
+        until cars:FindFirstChild("Squad", 5)
+    end)
+
+    if not ok then
+        notify("Kick", "Car spawn failed", 5)
+        return
+    end
+
+    local carModel = cars:FindFirstChild("Squad", 5)
+    if not carModel or handlemissingcar2(cars) then
+        notify("Kick", "Car disappeared or failed to spawn", 5)
+        return
+    end
+
+    local body = carModel:FindFirstChild("Body")
+    local seat = body and body:FindFirstChild("VehicleSeat")
+
+    if not body or not seat then
+        notify("Kick", "Car body or seat missing", 5)
+        return
+    end
+
+    local parts = {}
+
+    for _, v in ipairs(body:GetDescendants()) do
+        if v:IsA("BasePart") then
+            table.insert(parts, v)
+        end
+    end
+
+    if #parts == 0 then
+        handlemissingcar2(cars)
+        return
+    end
+
+    hp = gethp()
+    task.wait(0.09)
+
+    for _, v in ipairs(parts) do
+        if handlemissingcar2(cars) then
+            return
+        end
+
+        if v and v.Parent then
+            local success = pcall(function()
+                if isNetworkOwned(seat) then
+                    if handlemissingcar2(cars) then
+                        return
+                    end
+                    
+                    v.Velocity = Vector3.new(10000, 10000, 10000)
+                    
+                    local ch = player.Character
+                    local hd = ch.Head
+                    local hb = ch.Torso
+                    
+                    sethiddenproperty(v, "PhysicsRepRootPart", ch.Humanoid.RootPart)
+                    sethiddenproperty(v, "PhysicsRepRootRef", InstanceHandle.new(ch.Humanoid.RootPart))
+                    
+                    v.CFrame = hd.CFrame * CFrame.new(-2, 0, 0) * CFrame.Angles(math.rad(90),0,0)
+                end
+            end)
+
+            if not success and handlemissingcar2(cars) then
+                task.wait(players.RespawnTime)
+                kick2(arg)
+            end
+        end
+    end
+end
+
 local function explode(arg)
     local player, err = findpl(arg)
     if not player then
@@ -1597,6 +1759,8 @@ local function unautoreload()
 	notify("AutoReload", "Disabled", 3)
 end
 
+local function setCharacterVisible(visible) end -- ignore ts
+
 local function animationTrickery()
 	local ch = getch()
 	local hm = gethm()
@@ -1606,7 +1770,7 @@ local function animationTrickery()
 	local anim = Instance.new('Animation')
 	anim.AnimationId = 'rbxassetid://' .. (isR15 and '18665825805' or '215384594')
 
-	local animator = hm:FindFirstChildOfClass('Animator') or hm:WaitForChild('Animator', 2)
+	local animator = hm:FindFirstChildOfClass('Animator') or hm:WaitForChild('Animator', 3)
 	if not animator then return end
 
 	if invisanimtrack then
@@ -1622,9 +1786,10 @@ local function animationTrickery()
 	invisanimtrack:Play(0, 0.001, 0)
 	anim:Destroy()
 
-	task.delay(0, function()
-		if invisanimtrack then
+	task.delay(0.05, function()
+		if invisanimtrack and invisanimtrack.IsPlaying then
 			invisanimtrack.TimePosition = isR15 and 1.95 or 0.4
+			invisanimtrack:AdjustSpeed(0)
 		end
 	end)
 end
@@ -1632,23 +1797,27 @@ end
 local function invisible()
 	if invisiblebool then return end
 	invisiblebool = true
-
-	animationTrickery()
 	invisoldcf = nil
 
-	local bindKey = 'InvisBind_' .. tostring(math.random(1, 999999))
+	setCharacterVisible(false)
+
+	animationTrickery()
+
+	local bindKey = 'Invis_' .. tostring(tick())
 	invisiblebind = bindKey
 
-	run:BindToRenderStep(bindKey, 0, function()
-		if not invisiblebool then return end
-		local ch = localp.Character
-		local root = ch and ch:FindFirstChild('HumanoidRootPart')
-		if root and invisoldcf then
-			root.CFrame = invisoldcf
-			if invisanimtrack then
-				invisanimtrack:AdjustWeight(0.001)
+	pcall(function()
+		run:BindToRenderStep(bindKey, Enum.RenderPriority.Camera.Value - 1, function()
+			if not invisiblebool then return end
+			local ch = localp.Character
+			local root = ch and ch:FindFirstChild('HumanoidRootPart')
+			if root and invisoldcf then
+				root.CFrame = invisoldcf
+				if invisanimtrack then
+					pcall(function() invisanimtrack:AdjustWeight(0.001) end)
+				end
 			end
-		end
+		end)
 	end)
 
 	if invisibleconn then
@@ -1658,43 +1827,54 @@ local function invisible()
 
 	invisibleconn = run.Heartbeat:Connect(function()
 		if not invisiblebool then return end
+
 		local ch = localp.Character
-		local hm = ch and ch:FindFirstChildOfClass('Humanoid')
-		local root = ch and ch:FindFirstChild('HumanoidRootPart')
-		if not (ch and hm and root) then return end
+		if not ch then return end
+
+		setCharacterVisible(false)
+
+		local hm = ch:FindFirstChildOfClass('Humanoid')
+		local root = ch:FindFirstChild('HumanoidRootPart')
+		if not (hm and root) then return end
+
+		if not invisanimtrack or not invisanimtrack.IsPlaying then
+			animationTrickery()
+		end
 
 		local isR15 = hm.RigType == Enum.HumanoidRigType.R15
-		local cf = root.CFrame - Vector3.new(0, hm.HipHeight + (root.Size.Y / 2) - 1, 0)
+		local offset = Vector3.new(0, hm.HipHeight + (root.Size.Y / 2) - 1, 0)
 		invisoldcf = root.CFrame
 
-		root.CFrame = cf * CFrame.Angles(math.rad(isR15 and 180 or 90), 0, 0)
+		root.CFrame = (root.CFrame - offset) * CFrame.Angles(math.rad(isR15 and 180 or 90), 0, 0)
+
 		if invisanimtrack then
-			invisanimtrack:AdjustWeight(100)
+			pcall(function()
+				invisanimtrack:AdjustWeight(100)
+				invisanimtrack:AdjustSpeed(0)
+			end)
 		end
 	end)
 
-	local charConn
-	charConn = localp.CharacterAdded:Connect(function(char)
-		if not invisiblebool then
-			if charConn then charConn:Disconnect() end
-			return
-		end
-		task.wait(0.6)
-		local hm = char:FindFirstChildOfClass('Humanoid')
-		if hm then
-			local animator = hm:WaitForChild('Animator', 2)
-			if animator then
-				invisiblebool = false
-				if invisibleconn then invisibleconn:Disconnect() invisibleconn = nil end
-				if invisiblebind then pcall(run.UnbindFromRenderStep, run, invisiblebind) invisiblebind = nil end
-				if invisanimtrack then pcall(function() invisanimtrack:Stop() invisanimtrack:Destroy() end) invisanimtrack = nil end
-				task.wait(0.5)
-				invisible()
+	task.spawn(function()
+		while invisiblebool do
+			local ch = localp.Character
+			if ch then
+				local hm = ch:FindFirstChildOfClass('Humanoid')
+				if hm then
+					hm.Died:Wait()
+					if not invisiblebool then break end
+					task.wait(players.RespawnTime + 0.8)
+					if invisiblebool then
+						setCharacterVisible(false)
+						animationTrickery()
+					end
+				end
 			end
+			task.wait(0.5)
 		end
 	end)
 
-	notify("Invisible", "Enabled", 3)
+	notify("Invisible", "Enabled (local + anim)", 3)
 end
 
 local function uninvisible()
@@ -1998,17 +2178,13 @@ local function watchadmin(plr)
         cmd = cmd:lower()
         
         if cmd == "cmds" then
-            textcs:SendAsync('prefix: ; commands: kill <player> kick <player> (must not be in prison) arrest <player>')
+            textcs:SendAsync('prefix: ; commands: kill <player> arrest <player>')
             task.wait(0.3)
             textcs:SendAsync('goto <player> (use if ur not in prison) base (use if ur not in prison) tower (use if ur not in prison)')
         end
         
         if cmd == "kill" and arg ~= "" then
             task.spawn(kill,arg)
-        end
-        
-        if cmd == "kick" and arg ~= "" then
-            task.spawn(kick,arg)
         end
         
         if cmd == "arrest" and arg ~= "" then
@@ -2402,6 +2578,29 @@ local function unkaura()
     notify("KillAura", "Disabled", 3)
 end
 
+local function ashield()
+    antishield = true
+    repeat
+        for _, v in pairs(players:GetPlayers()) do
+            local sh = v.Character:FindFirstChild('RiotShieldPart')
+            if sh then
+                v.CanQuery = false
+            end
+        end
+        task.wait()
+    until not antishield
+end
+
+local function stopshield()
+    antishield = false
+    for _, v in pairs(players:GetPlayers()) do
+        local sh = v.Character:FindFirstChild('RiotShieldPart')
+        if sh then
+            v.CanQuery = true
+        end
+    end
+end
+
 local prefix = ";"
 local cmds = {
 	"cmds",
@@ -2426,7 +2625,9 @@ local cmds = {
 	"removedoors / rdoors",
 	"arrest <player name> (shortcut names supported)",
 	"infjump / uninfjump",
-	"kick <player name> (recommendation, player to not be in prison) (shortcut names supported)",
+	"kick <player name> (kick2 recommended) (shortcut names supported)",
+	"kick2 <player name> (shortcut names supported)",
+	"stopkick (for kick2)",
 	"bring <player name>",
 	"kill <player name> (shortcut names supported)",
 	"loopkill <player name> (shortcut names supported)",
@@ -2463,6 +2664,8 @@ local cmds = {
     "unautomatic",
     "killaura",
     "unkillaura",
+    "antishield",
+    "unantishield",
 }
 
 local C = {
@@ -3033,6 +3236,10 @@ local function runcommand(msg, frombar)
         ignore = false
     elseif cmd == "car" then
         task.spawn(car)
+    elseif cmd == "antishield" then
+        ashield()
+    elseif cmd == "unantishield" then
+        stopshield()
     elseif cmd == "view" and arg ~= "" then
         view(arg)
     elseif cmd == "unview" then
@@ -3107,6 +3314,17 @@ local function runcommand(msg, frombar)
         unkaura()
     elseif cmd == "kick" and arg ~= "" then
         task.spawn(kick, arg)
+    elseif cmd == "kick2" and arg ~= "" then
+        repeat
+            if stopkick then
+                stopkick = false
+                break
+            end
+            task.spawn(kick2, arg)
+            task.wait(1)
+        until not findpl(arg)
+    elseif cmd == 'stopkick' then
+        stopkick = true
     elseif (cmd == "carexplode" or cmd == "cexplode") and arg ~= "" then
         task.spawn(explode, arg)
     elseif cmd == "walkspeed" or cmd == "speed" then
