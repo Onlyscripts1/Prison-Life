@@ -1973,7 +1973,9 @@ local function watchadmin(plr)
         cmd = cmd:lower()
         
         if cmd == "cmds" then
-            textcs:SendAsync('prefix: ; commands: kill <player> kick <player> arrest <player> goto <player> (use if ur not in prison) base (use if ur not in prison) tower (use if ur not in prison) autoreload unautoreload hotswap unhotswap invisible uninvisible firerate nospread automatic')
+            textcs:SendAsync('prefix: ; commands: kill <player> kick <player> (must not be in prison) arrest <player>')
+            task.wait(0.3)
+            textcs:SendAsync('goto <player> (use if ur not in prison) base (use if ur not in prison) tower (use if ur not in prison)')
         end
         
         if cmd == "kill" and arg ~= "" then
@@ -2015,66 +2017,6 @@ local function watchadmin(plr)
             tower()
             task.wait(0.5)
             task.spawn(bring,plr.Name)
-        end
-
-        if cmd == "autoreload" then
-            task.spawn(autoreload)
-        end
-
-        if cmd == "unautoreload" then
-            unautoreload()
-        end
-
-        if cmd == "hotswap" or cmd == "autoswap" then
-            hotswapbool = true
-            notify("HotSwap", "Enabled", 3)
-        end
-
-        if cmd == "unhotswap" or cmd == "unautoswap" then
-            hotswapbool = false
-            notify("HotSwap", "Disabled", 3)
-        end
-
-        if cmd == "invisible" then
-            task.spawn(invisible)
-        end
-
-        if cmd == "uninvisible" then
-            uninvisible()
-        end
-
-        if cmd == "firerate" and arg ~= "" then
-            setFireRate(arg)
-        end
-
-        if cmd == "unfirerate" or cmd == "resetfirerate" then
-            resetFireRate()
-        end
-
-        if cmd == "nospread" then
-            nospreadbool = true
-            applyAllGunMods()
-            startGunModLoop()
-            notify("NoSpread", "Enabled", 3)
-        end
-
-        if cmd == "unnospread" then
-            nospreadbool = false
-            applyAllGunMods()
-            notify("NoSpread", "Disabled", 3)
-        end
-
-        if cmd == "automatic" or cmd == "fullauto" then
-            automaticbool = true
-            applyAllGunMods()
-            startGunModLoop()
-            notify("Automatic", "Enabled", 3)
-        end
-
-        if cmd == "unautomatic" then
-            automaticbool = false
-            applyAllGunMods()
-            notify("Automatic", "Disabled", 3)
         end
     end)
 end
