@@ -166,6 +166,7 @@ local function change(teamn)
         until localp.Team.Name == 'Inmates'
         task.wait(0.1)
         crim2()
+        repeat task.wait() until not getch():FindFirstChild('ForceField')
     end
 end
 
