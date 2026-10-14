@@ -1,4 +1,4 @@
--- This script is made by feariosz0 in discord, v1.1.0
+-- This script is made by feariosz0 in discord, v1.1.3
 
 local noclipbool = false
 local infstambool = false
@@ -204,7 +204,7 @@ end
 do -- limit for kick/kill
     local p = Instance.new('Part')
     p.Name = 'HeightLimit'
-    p.Size = Vector3.new(10000000, 10, 10000000)
+    p.Size = Vector3.new(10000000000000, 10, 10000000000000)
     p.Position = Vector3.new(929, 180, 2397)
     p.Anchored = true
     p.Transparency = 1
@@ -1168,6 +1168,7 @@ local function isNetworkOwned(part)
 	if typeof(isnetowner) ~= 'function' then return true end
 
 	local success, owned = pcall(isnetowner, part)
+	repeat task.wait() until success and owned
 	return success and owned
 end
 
@@ -1276,7 +1277,6 @@ local function kick2(arg)
     end
 
     hp = gethp()
-    task.wait(0.09)
 
     for _, v in ipairs(parts) do
         if handlemissingcar2(cars) then
@@ -1289,17 +1289,13 @@ local function kick2(arg)
                     if handlemissingcar2(cars) then
                         return
                     end
-                    
                     v.Velocity = Vector3.new(10000, 10000, 10000)
-                    
                     local ch = player.Character
                     local hd = ch.Head
-                    local hb = ch.Torso
-                    
-                    --sethiddenproperty(v, "PhysicsRepRootPart", ch.Humanoid.RootPart)
-                    --sethiddenproperty(v, "PhysicsRepRootRef", InstanceHandle.new(ch.Humanoid.RootPart))
-                    
-                    v.CFrame = hd.CFrame * CFrame.new(-2, 0, -1) * CFrame.Angles(math.rad(90),0,0)
+                    seat.CFrame = hd.CFrame * CFrame.new(-2, 0, -12)
+                    seat.AssemblyLinearVelocity = Vector3.new(10000,10000,0)
+                    sethiddenproperty(seat, "PhysicsRepRootPart", ch.Humanoid.RootPart)
+                    sethiddenproperty(seat, 'PhysicsRepRootRef', InstanceHandle.new(ch.Humanoid.RootPart))
                 end
             end)
 
@@ -1329,6 +1325,7 @@ local function explode(arg)
     local og = hp.CFrame
     local og1 = hp.Velocity
     for i = 1,10 do
+        hp.Velocity = Vector3.new(10000,0,10000)
         hp.CFrame = tr.CFrame * CFrame.new(0,1,-3)
         task.wait(0.1)
     end
@@ -1875,7 +1872,7 @@ local function invisible()
 		end
 	end)
 
-	notify("Invisible", "Enabled (local + anim)", 3)
+	notify("Invisible", "Enabled", 3)
 end
 
 local function uninvisible()
@@ -1912,7 +1909,7 @@ local function uninvisible()
 	notify("Invisible", "Disabled", 3)
 end
 
-local liveGunData = nil -- the live table the game is currently using
+local liveGunData = nil
 local liveGunDataOrig = nil
 
 local function getGunStates(tool)
@@ -1927,16 +1924,13 @@ local function getGunStates(tool)
 	return nil
 end
 
--- Try to locate the live gun data table the client is actually reading
 local function findLiveGunData()
-	-- Method 1: look for tables that have FireRate + SpreadRadius + AutoFire
 	for _, v in next, getgc(true) do
 		if type(v) == "table" then
 			local fr = rawget(v, "FireRate") or rawget(v, "fireRate")
 			local sr = rawget(v, "SpreadRadius") or rawget(v, "Spread")
 			local af = rawget(v, "AutoFire") or rawget(v, "Automatic")
 			if type(fr) == "number" and (type(sr) == "number" or type(af) == "boolean") then
-				-- prefer the one that is currently being used (has a reasonable FireRate)
 				if fr > 0 and fr < 5 then
 					return v
 				end
@@ -1986,7 +1980,6 @@ end
 local function applyGunMods(tool)
 	if not tool or not tool:IsA("Tool") then return end
 
-	-- 1. GunStates module
 	local mod = getGunStates(tool)
 	if mod then
 		if not originalGunData[tool] then
@@ -2012,7 +2005,6 @@ local function applyGunMods(tool)
 		end
 	end
 
-	-- 2. Attributes
 	if tool:GetAttribute("FireRate") ~= nil then
 		if not originalGunData[tool] then
 			originalGunData[tool] = {
@@ -2057,7 +2049,6 @@ local function applyAllGunMods()
 		end
 	end
 
-	-- 3. Live data table (most important for modern PL)
 	if not liveGunData or type(liveGunData) ~= "table" then
 		liveGunData = findLiveGunData()
 	end
@@ -2069,7 +2060,6 @@ end
 local function startGunModLoop()
 	if gunmodconn then return end
 
-	-- also re-find live data periodically
 	local lastFind = 0
 
 	gunmodconn = run.Heartbeat:Connect(function()
@@ -2081,7 +2071,6 @@ local function startGunModLoop()
 		applyAllGunMods()
 	end)
 
-	-- re-apply instantly when you equip a tool
 	local function onChar(ch)
 		if not ch then return end
 		ch.ChildAdded:Connect(function(child)
@@ -2125,7 +2114,6 @@ local function resetFireRate()
 	applyAllGunMods()
 	stopGunModLoop()
 
-	-- restore tool data
 	for tool, orig in pairs(originalGunData) do
 		if tool and tool.Parent then
 			local mod = getGunStates(tool)
@@ -2144,7 +2132,6 @@ local function resetFireRate()
 	end
 	table.clear(originalGunData)
 
-	-- restore live data
 	if liveGunData and liveGunDataOrig then
 		if liveGunData.FireRate ~= nil then liveGunData.FireRate = liveGunDataOrig.FireRate end
 		if liveGunData.fireRate ~= nil then liveGunData.fireRate = liveGunDataOrig.FireRate end
@@ -2602,6 +2589,124 @@ local function stopshield()
     end
 end
 
+local antiarrest = false
+
+local function antirr()
+    antiarrest = true
+    while antiarrest do
+        local anim = 'rbxassetid://287112271'
+        for _, v in pairs(gethm():GetPlayingAnimationTracks()) do
+            if v.Animation.AnimationId == anim then
+                local ogt = localp.Team.Name
+                local ogc = gethp().CFrame
+                change(ogt)
+                repeat task.wait() until getch():FindFirstChild('HumanoidRootPart')
+                task.wait(0.1)
+                gethp().CFrame = ogc
+            end
+        end
+        task.wait()
+    end
+end
+
+local function stopantirr()
+    antiarrest = false
+end
+
+local function carwalk()
+    local genv = (getgenv and getgenv()) or _G
+    if genv.__CarwalkBusy then
+        notify("Carwalk", "Already running!", 3)
+        return
+    end
+
+    local ch = getch()
+    local hm = gethm()
+    local hp = gethp()
+    if not (ch and hm and hp) then
+        notify("Carwalk", "No character found.", 3)
+        return
+    end
+
+    local function findCar()
+        local container = workspace:FindFirstChild("CarContainer")
+        if not container then return nil end
+        for _, v in pairs(container:GetChildren()) do
+            if v:IsA("Model") and v:FindFirstChild("Body") and v.Body:FindFirstChild("VehicleSeat")
+                and not v.Body.VehicleSeat.Occupant then
+                for _, vv in pairs(v.Body:GetChildren()) do
+                    if vv:IsA("Seat") and not vv.Occupant then
+                        return v
+                    end
+                end
+            end
+        end
+        return nil
+    end
+
+    local Car = findCar()
+    if not Car then
+        notify("Carwalk", "No available car found.", 3)
+        return
+    end
+
+    genv.__CarwalkBusy = true
+
+    local ok, err = pcall(function()
+        local waitStart = tick()
+        repeat
+            task.wait()
+            if tick() - waitStart > 10 then
+                notify("Carwalk", "Car parts failed to load.", 3)
+                return
+            end
+        until Car:FindFirstChild("RWD") and Car:FindFirstChild("Body") and Car.Body:FindFirstChild("VehicleSeat")
+
+        local lastPos = hp.CFrame
+        hm:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+
+        local sitDone, sitStart = false, tick()
+        while not sitDone do
+            task.wait()
+            pcall(function()
+                hp.CFrame = CFrame.new(Car.Body.VehicleSeat.Position)
+                Car.Body.VehicleSeat:Sit(hm)
+                sitDone = hm.Sit or (tick() - sitStart > 6)
+            end)
+        end
+
+        if not hm.Sit then
+            notify("Carwalk", "Failed to sit in car.", 3)
+            hm:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+            return
+        end
+
+        Car.PrimaryPart = Car:WaitForChild("RWD")
+        Car:SetPrimaryPartCFrame(lastPos)
+        notify("Carwalk", "Walking with a car!", 3)
+    end)
+
+    if not ok then
+        warn("[Carwalk] error:", err)
+    end
+    genv.__CarwalkBusy = false
+end
+
+local function wallbang()
+    if getgenv().SilentAimCFG then
+        getgenv().SilentAimCFG.enabled = true
+        notify("Wallbang", "Enabled", 3)
+        return
+    else
+        loadstring(game:HttpGet('https://gist.githubusercontent.com/Onlyscripts1/4db9653a52776310ed20b5200436ae66/raw/b23500cffc815de93b525bb4d2d6dba486c335de/wallbang'))()
+    end
+end
+
+local function unwallbang()
+    getgenv().SilentAimCFG.enabled = false
+    notify("Wallbang", "Disabled", 3)
+end
+
 local prefix = ";"
 local cmds = {
 	"cmds",
@@ -2663,10 +2768,15 @@ local cmds = {
     "unnospread",
     "automatic / fullauto",
     "unautomatic",
-    "killaura",
-    "unkillaura",
+    "killaura / kaura",
+    "unkillaura / unkaura",
     "antishield",
     "unantishield",
+    "antiarrest",
+    "unantiarrest",
+    "carwalk",
+    "wallbang",
+    "unwallbang",
 }
 
 local C = {
@@ -3237,6 +3347,12 @@ local function runcommand(msg, frombar)
         ignore = false
     elseif cmd == "car" then
         task.spawn(car)
+    elseif cmd == "carwalk" then
+        task.spawn(carwalk)
+    elseif cmd == "wallbang" then
+        wallbang()
+    elseif cmd == "unwallbang" then
+        unwallbang()
     elseif cmd == "antishield" then
         ashield()
     elseif cmd == "unantishield" then
@@ -3313,6 +3429,10 @@ local function runcommand(msg, frombar)
         task.spawn(kaura)
     elseif cmd == "unkillaura" or cmd == "unkaura" then
         unkaura()
+    elseif cmd == "antiarrest" then
+        task.spawn(antirr)
+    elseif cmd == "unantiarrest" then
+        stopantirr()
     elseif cmd == "kick" and arg ~= "" then
         task.spawn(kick, arg)
     elseif cmd == "kick2" and arg ~= "" then
