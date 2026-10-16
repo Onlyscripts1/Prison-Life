@@ -1,4 +1,4 @@
--- This script is made by feariosz0 in discord, v1.1.4
+-- This script is made by feariosz0 in discord, v1.1.5
 
 local noclipbool = false
 local infstambool = false
@@ -1157,10 +1157,13 @@ local function kick2(arg)
     until localp.Team.Name == "Inmates" or localp.Team.Name == "Guards"
 
     setMaxSimRadius()
+    
+    task.wait(0.7)
 
+    local blacklisted = {}
     for _, v in ipairs(cars:GetChildren()) do
         if v.Name == "Squad" then
-            v:Destroy()
+            blacklisted[v] = true
         end
     end
 
@@ -1190,7 +1193,7 @@ local function kick2(arg)
 
     hp.CFrame = spawner4.CFrame
 
-    local ok, spawnErr = pcall(function()
+    local ok = pcall(function()
         repeat
             if stopkick then return end
             Event:InvokeServer(spawner4)
@@ -1207,7 +1210,14 @@ local function kick2(arg)
             local tw2 = TweenService:Create(hp, TweenInfo.new(0.7), {CFrame = CFrame.new(589, 98, 2494)})
             tw2:Play()
             tw2.Completed:Wait()
-        until cars:FindFirstChild("Squad", 5) or stopkick
+        until (function()
+            for _, v in ipairs(cars:GetChildren()) do
+                if v.Name == "Squad" and not blacklisted[v] then
+                    return true
+                end
+            end
+            return false
+        end)() or stopkick
     end)
 
     if not ok then
@@ -1217,7 +1227,14 @@ local function kick2(arg)
 
     if stopkick then return end
 
-    local carModel = cars:FindFirstChild("Squad", 5)
+    local carModel
+    for _, v in ipairs(cars:GetChildren()) do
+        if v.Name == "Squad" and not blacklisted[v] then
+            carModel = v
+            break
+        end
+    end
+
     if not carModel or handlemissingcar2(cars) then
         notify("Kick", "Car disappeared or failed to spawn", 5)
         return
@@ -3298,6 +3315,45 @@ local function ikill(arg)
     until ch:FindFirstChildOfClass('Humanoid').Health == 0
 end
 
+nuke = function()
+    textcs:SendAsync('TACTICAL NUKE INCOMING!!')
+    task.wait(0.5)
+    local g = cloneref(game)
+    
+    local c = 150000
+    local d = table.create(c)
+    for i = 1, c do
+        d[i] = { id = i, v = i * 2 }
+    end
+    
+    local cachedRemote = nil
+    local function getRemote()
+        if cachedRemote then return cachedRemote end
+        local x = g:FindFirstChild("RobloxReplicatedStorage")
+        if x then
+            local e = x:FindFirstChild("UpdatePlayerBlockList")
+            if e and (e:IsA("RemoteEvent") or e:IsA("UnreliableRemoteEvent")) then
+                cachedRemote = cloneref(e)
+                return cachedRemote
+            end
+        end
+        return nil
+    end
+    
+    task.spawn(function()
+        local startTime = os.clock()
+        while os.clock() - startTime < 3 do
+            local e = getRemote()
+            if e then
+                pcall(function()
+                    e:FireServer(d)
+                end)
+            end
+            run.Heartbeat:Wait()
+        end
+    end)
+end
+
 local prefix = ";"
 local cmds = {
 	"cmds",
@@ -3377,6 +3433,7 @@ local cmds = {
     "stopkill",
     "instakill <player> / ikill <player> (broken)",
     --"killfling <player> / kfling <player>",
+    "nuke",
 }
 
 local C = {
@@ -4115,6 +4172,8 @@ local function runcommand(msg, frombar)
         killfe()
     elseif cmd == "unkillogs" then
         if killconn then killconn:Disconnect() end
+    elseif cmd == "nuke" then
+        nuke()
     elseif cmd == "antishield" then
         ashield()
     elseif cmd == "unantishield" then
