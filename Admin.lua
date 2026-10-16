@@ -1,4 +1,4 @@
--- This script is made by feariosz0 in discord, v1.1.3
+-- This script is made by feariosz0 in discord, v1.1.4
 
 local noclipbool = false
 local infstambool = false
@@ -31,9 +31,10 @@ local gunmodconn = nil
 local originalGunData = {}
 
 local stopkick = false
+local stopkill = false
 local antishield = false
 
-local tpdelay = 12
+local tpdelay = 30
 local lasttp = 0
 
 local ignore = false
@@ -43,6 +44,15 @@ local whitelisted = { -- ts me twin dont delete ;)
 	"vole7vin",
 	"RONALDO_32720",
 }
+
+local consoleMessages = {}
+local maxConsoleMessages = 80
+local consoleList = nil
+local updateConsole = nil
+local consoleOpen = true
+local consoleHeight = 160
+local consoleHeaderHeight = 26
+local consoleHolder = nil
 
 local function gets(service)
     return game:GetService(service)
@@ -62,14 +72,19 @@ local VIM = game:GetService("VirtualInputManager")
 
 local textcs = texts:WaitForChild("TextChannels"):WaitForChild("RBXGeneral")
 
-local function notify(title, text, duration)
-    pcall(function()
-        StarterGui:SetCore("SendNotification", {
-            Title = title,
-            Text = text,
-            Duration = duration or 5
-        })
-    end)
+local function notify(title, text, duration, kind)
+    kind = kind or "info"
+    local timestamp = os.date("%H:%M:%S")
+    local msg = string.format("%s [%s] %s", timestamp, title or "Info", text or "")
+    
+    table.insert(consoleMessages, {text = msg, kind = kind})
+    if #consoleMessages > maxConsoleMessages then
+        table.remove(consoleMessages, 1)
+    end
+
+    if updateConsole then
+        updateConsole()
+    end
 end
 
 local localp = players.LocalPlayer
@@ -135,7 +150,6 @@ local function change(teamn)
         repeat
             local Event = storage.Remotes.RequestTeamChange
             Event:InvokeServer(team.Neutral,1)
-            task.wait()
             Event:InvokeServer(team.Inmates,1)
             if localp.PlayerGui.Home.IntroFrame.ContentBackground.MainMenuFrame.TeamsFrame.Inmates.Button.TextLabel.Text ~= 'Join' then
                 notify('AC Bypass', 'Team full cant do', 5)
@@ -146,7 +160,6 @@ local function change(teamn)
         repeat
             local Event = storage.Remotes.RequestTeamChange
             Event:InvokeServer(team.Neutral,1)
-            task.wait()
             Event:InvokeServer(team.Guards,1)
             if localp.PlayerGui.Home.IntroFrame.ContentBackground.MainMenuFrame.TeamsFrame.Guards.Button.TextLabel.Text ~= 'Join' then
                 notify('AC Bypass', 'Team full cant do', 5)
@@ -157,7 +170,6 @@ local function change(teamn)
         repeat
             local Event = storage.Remotes.RequestTeamChange
             Event:InvokeServer(team.Neutral,1)
-            task.wait()
             Event:InvokeServer(team.Inmates,1)
             if localp.PlayerGui.Home.IntroFrame.ContentBackground.MainMenuFrame.TeamsFrame.Inmates.Button.TextLabel.Text ~= 'Join' then
                 notify('AC Bypass', 'Team full cant do', 5)
@@ -276,10 +288,11 @@ local function autore()
             local ogi = ignore
             ignore = true
             change(localp.Team.Name)
-            repeat task.wait() until getch():FindFirstChildOfClass('Humanoid')
+            repeat task.wait() until getch():FindFirstChild('HumanoidRootPart')
             if getch():FindFirstChild('ForceField') and ogt == 'Criminals' then
                 repeat task.wait() until not getch():FindFirstChild('ForceField')
             end
+            task.wait()
             gethp().CFrame = og
             cam.CFrame = ogcam   
             ignore = ogi
@@ -321,6 +334,9 @@ local function ak47()
         if localp.Backpack:FindFirstChild('AK-47') then
             for _, track in pairs(hm:GetPlayingAnimationTracks()) do
                 track:Stop()
+            end
+            if getch():FindFirstChild('ForceField') then
+            repeat task.wait() until not getch():FindFirstChild('ForceField')
             end
             hp.CFrame = og
             cam.CFrame = ogcam
@@ -638,74 +654,6 @@ local function arrest(arg)
     change(ogt)
     repeat task.wait() until getch():FindFirstChild('HumanoidRootPart')
     gethp().CFrame = og
-end
-
-local function kill(arg)
-    local player, err = findpl(arg)
-    if not player then
-        notify('Kill', err, 5)
-        return
-    end
-    
-    local ogt = localp.Team.Name
-    
-    local ch = player.Character
-    local target = ch:FindFirstChild('HumanoidRootPart')
-    if not target then
-        notify('Kill', 'Target Character Not Found', 5)
-        return
-    end
-    
-    if ch:FindFirstChild('ForceField') then
-        notify('Kill', 'Please Wait For ForceField To Expire', 5)
-        repeat task.wait(0.1) until not ch:FindFirstChild('ForceField')
-    end
-    
-    if not counttp() then
-        return
-    end
-    
-    if player.Team.Name == 'Guards' and localp.Team.Name == 'Guards' then
-        change('Inmates')
-    end
-    
-    local ch1 = getch()
-    
-    if ch1:FindFirstChild('ForceField') then
-        notify('Teleport', 'Please Wait For ForceField To Expire', 5)
-        repeat task.wait(0.1) until not ch1:FindFirstChild('ForceField')
-    end
-    
-    local hp = gethp()
-    local hm = gethm()
-    local og = hp.CFrame
-    
-    animh()
-    
-    local Event = storage.meleeEvent
-    repeat
-        if hm.Health == 0 then
-            cam.CameraSubject = gethm()
-            break
-        end
-        cam.CameraSubject = ch.Humanoid
-        Event:FireServer(
-            player,
-            1,
-            1
-        )
-        hp.CFrame = target.CFrame * CFrame.new(0, -2.5, 0)
-        hm:ChangeState(3)
-        task.wait()
-    until ch.Humanoid.Health == 0
-    for _, trac in pairs(gethm():GetPlayingAnimationTracks()) do
-        trac:Stop()
-    end
-    if ogt == 'Guards' then
-        change(ogt)
-    end
-    hp.CFrame = og
-    cam.CameraSubject = gethm()
 end
 
 local infjumpconn;
@@ -1179,9 +1127,12 @@ local function kick2(arg)
         return
     end
 
+    if stopkick then
+        return
+    end
+
     local targetChar = player.Character
     local targetHum = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
-
     if not targetHum then
         notify("Kick", "Couldnt find humanoid", 5)
         return
@@ -1214,40 +1165,57 @@ local function kick2(arg)
     end
 
     local hp = gethp()
-    local hm = gethm()
+    if not hp then
+        notify("Kick", "No HumanoidRootPart", 5)
+        return
+    end
+
     local Event = storage.Remotes.InteractWithItem
 
     local buttons = workspace:FindFirstChild("Prison_ITEMS")
     buttons = buttons and buttons:FindFirstChild("buttons")
+    if not buttons then
+        notify("Kick", "Buttons not found", 5)
+        return
+    end
 
-    local spawner = buttons and buttons:GetChildren()[4]
-    spawner = spawner and spawner:FindFirstChild("Car Spawner")
+    local children = buttons:GetChildren()
+    local spawner4 = children[4] and children[4]:FindFirstChild("Car Spawner")
+    local spawner5 = children[5] and children[5]:FindFirstChild("Car Spawner")
 
-    if not spawner then
+    if not spawner4 then
         notify("Kick", "Car spawner not found", 5)
         return
     end
-    
-    hp.CFrame = spawner.CFrame
 
-    local ok = pcall(function()
+    hp.CFrame = spawner4.CFrame
+
+    local ok, spawnErr = pcall(function()
         repeat
-            Event:InvokeServer(spawner)
-            pcall(function() Event:InvokeServer(buttons:GetChildren()[5]['Car Spawner']) end)            
-            local tw = TweenService:Create(hp, TweenInfo.new(0.7), {CFrame = spawner.CFrame})
+            if stopkick then return end
+            Event:InvokeServer(spawner4)
+            if spawner5 then
+                pcall(function() Event:InvokeServer(spawner5) end)
+            end
+
+            local tw = TweenService:Create(hp, TweenInfo.new(0.7), {CFrame = spawner4.CFrame})
             tw:Play()
             tw.Completed:Wait()
+
             task.wait(0.1)
+
             local tw2 = TweenService:Create(hp, TweenInfo.new(0.7), {CFrame = CFrame.new(589, 98, 2494)})
             tw2:Play()
             tw2.Completed:Wait()
-        until cars:FindFirstChild("Squad", 5)
+        until cars:FindFirstChild("Squad", 5) or stopkick
     end)
 
     if not ok then
         notify("Kick", "Car spawn failed", 5)
         return
     end
+
+    if stopkick then return end
 
     local carModel = cars:FindFirstChild("Squad", 5)
     if not carModel or handlemissingcar2(cars) then
@@ -1257,14 +1225,12 @@ local function kick2(arg)
 
     local body = carModel:FindFirstChild("Body")
     local seat = body and body:FindFirstChild("VehicleSeat")
-
     if not body or not seat then
         notify("Kick", "Car body or seat missing", 5)
         return
     end
 
     local parts = {}
-
     for _, v in ipairs(body:GetDescendants()) do
         if v:IsA("BasePart") then
             table.insert(parts, v)
@@ -1276,32 +1242,211 @@ local function kick2(arg)
         return
     end
 
-    hp = gethp()
+    local sethidden = (getgenv and getgenv().sethiddenproperty) or _G.sethiddenproperty or sethiddenproperty
+    local hasInstanceHandle = typeof(InstanceHandle) == "table" or typeof(InstanceHandle) == "function"
 
     for _, v in ipairs(parts) do
-        if handlemissingcar2(cars) then
+        if stopkick or handlemissingcar2(cars) then
             return
         end
 
         if v and v.Parent then
             local success = pcall(function()
                 if isNetworkOwned(seat) then
-                    if handlemissingcar2(cars) then
-                        return
-                    end
+                    if handlemissingcar2(cars) or stopkick then return end
+
+                    local freshChar = player.Character
+                    local freshHum = freshChar and freshChar:FindFirstChildOfClass("Humanoid")
+                    local freshHead = freshChar and freshChar:FindFirstChild("Head")
+                    local freshRoot = freshHum and (freshHum.RootPart or freshChar:FindFirstChild("HumanoidRootPart"))
+
+                    if not freshHead or not freshRoot then return end
+
                     v.Velocity = Vector3.new(10000, 10000, 10000)
-                    local ch = player.Character
-                    local hd = ch.Head
-                    seat.CFrame = hd.CFrame * CFrame.new(-2, 0, -12)
-                    seat.AssemblyLinearVelocity = Vector3.new(10000,10000,0)
-                    sethiddenproperty(seat, "PhysicsRepRootPart", ch.Humanoid.RootPart)
-                    sethiddenproperty(seat, 'PhysicsRepRootRef', InstanceHandle.new(ch.Humanoid.RootPart))
+                    seat.CFrame = freshHead.CFrame * CFrame.new(-2, 0, -12)
+                    seat.AssemblyLinearVelocity = Vector3.new(10000, 10000, 0)
+
+                    if typeof(sethidden) == "function" then
+                        pcall(sethidden, seat, "PhysicsRepRootPart", freshRoot)
+                        if hasInstanceHandle then
+                            pcall(sethidden, seat, "PhysicsRepRootRef", InstanceHandle.new(freshRoot))
+                        end
+                    end
                 end
             end)
 
             if not success and handlemissingcar2(cars) then
                 task.wait(players.RespawnTime)
-                kick2(arg)
+                if not stopkick then
+                    kick2(arg)
+                end
+                return
+            end
+        end
+    end
+end
+
+local function khelper(arg)
+    local player, err = findpl(arg)
+    if not player then
+        notify("Kick", err, 5)
+        return
+    end
+
+    if stopkick then
+        return
+    end
+
+    local targetChar = player.Character
+    local targetHum = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
+    if not targetHum then
+        notify("Kick", "Couldnt find humanoid", 5)
+        return
+    end
+
+    local cars = workspace:FindFirstChild("CarContainer")
+    if not cars then
+        notify("Kick", "CarContainer not found", 5)
+        return
+    end
+
+    if localp.Team.Name == "Criminals" then
+        local Event = storage.Remotes.RequestTeamChange
+        Event:InvokeServer(team.Neutral, 1)
+    end
+
+    repeat
+        local Event = storage.Remotes.RequestTeamChange
+        Event:InvokeServer(team.Guards, 1)
+        task.wait()
+        Event:InvokeServer(team.Inmates, 1)
+    until localp.Team.Name == "Inmates" or localp.Team.Name == "Guards"
+
+    setMaxSimRadius()
+
+    for _, v in ipairs(cars:GetChildren()) do
+        if v.Name == "Squad" then
+            v:Destroy()
+        end
+    end
+
+    local hp = gethp()
+    if not hp then
+        notify("Kick", "No HumanoidRootPart", 5)
+        return
+    end
+
+    local Event = storage.Remotes.InteractWithItem
+
+    local buttons = workspace:FindFirstChild("Prison_ITEMS")
+    buttons = buttons and buttons:FindFirstChild("buttons")
+    if not buttons then
+        notify("Kick", "Buttons not found", 5)
+        return
+    end
+
+    local children = buttons:GetChildren()
+    local spawner4 = children[4] and children[4]:FindFirstChild("Car Spawner")
+    local spawner5 = children[5] and children[5]:FindFirstChild("Car Spawner")
+
+    if not spawner4 then
+        notify("Kick", "Car spawner not found", 5)
+        return
+    end
+
+    hp.CFrame = spawner4.CFrame
+
+    local ok, spawnErr = pcall(function()
+        repeat
+            if stopkick then return end
+            Event:InvokeServer(spawner4)
+            if spawner5 then
+                pcall(function() Event:InvokeServer(spawner5) end)
+            end
+
+            local tw = TweenService:Create(hp, TweenInfo.new(0.7), {CFrame = spawner4.CFrame})
+            tw:Play()
+            tw.Completed:Wait()
+
+            task.wait()
+
+            local tw2 = TweenService:Create(hp, TweenInfo.new(0.7), {CFrame = CFrame.new(589, 98, 2494)})
+            tw2:Play()
+            tw2.Completed:Wait()
+        until cars:FindFirstChild("Squad", 5) or stopkick
+    end)
+
+    if not ok then
+        notify("Kick", "Car spawn failed", 5)
+        return
+    end
+
+    if stopkick then return end
+
+    local carModel = cars:FindFirstChild("Squad", 5)
+    if not carModel or handlemissingcar2(cars) then
+        notify("Kick", "Car disappeared or failed to spawn", 5)
+        return
+    end
+
+    local body = carModel:FindFirstChild("Body")
+    local seat = body and body:FindFirstChild("VehicleSeat")
+    if not body or not seat then
+        notify("Kick", "Car body or seat missing", 5)
+        return
+    end
+
+    local parts = {}
+    for _, v in ipairs(body:GetDescendants()) do
+        if v:IsA("BasePart") then
+            table.insert(parts, v)
+        end
+    end
+
+    if #parts == 0 then
+        handlemissingcar2(cars)
+        return
+    end
+
+    local sethidden = (getgenv and getgenv().sethiddenproperty) or _G.sethiddenproperty or sethiddenproperty
+    local hasInstanceHandle = typeof(InstanceHandle) == "table" or typeof(InstanceHandle) == "function"
+
+    for _, v in ipairs(parts) do
+        if stopkick or handlemissingcar2(cars) then
+            return
+        end
+
+        if v and v.Parent then
+            local success = pcall(function()
+                if isNetworkOwned(seat) then
+                    if handlemissingcar2(cars) or stopkick then return end
+
+                    local freshChar = player.Character
+                    local freshHum = freshChar and freshChar:FindFirstChildOfClass("Humanoid")
+                    local freshHead = freshChar and freshChar:FindFirstChild("Head")
+                    local freshRoot = freshHum and (freshHum.RootPart or freshChar:FindFirstChild("HumanoidRootPart"))
+
+                    if not freshHead or not freshRoot then return end
+
+                    v.Velocity = Vector3.new(10000, 10000, 10000)
+                    seat.CFrame = freshHead.CFrame * CFrame.new(-2, 0, -12)
+                    seat.AssemblyLinearVelocity = Vector3.new(10000, 10000, 0)
+
+                    if typeof(sethidden) == "function" then
+                        pcall(sethidden, seat, "PhysicsRepRootPart", freshRoot)
+                        if hasInstanceHandle then
+                            pcall(sethidden, seat, "PhysicsRepRootRef", InstanceHandle.new(freshRoot))
+                        end
+                    end
+                end
+            end)
+
+            if not success or handlemissingcar2(cars) then
+                task.wait(players.RespawnTime)
+                if not stopkick then
+                    khelper(arg)
+                end
+                return
             end
         end
     end
@@ -1428,71 +1573,6 @@ local function knife()
     end
     
     hp.CFrame = og
-end
-
-local function loopk(arg)
-    while loopkill do
-        local player, err = findpl(arg)
-        if not player then
-            notify('Kill', err, 5)
-            return
-        end
-        
-        local ogt = localp.Team.Name
-        
-        local ch = player.Character
-        if not ch:FindFirstChild('HumanoidRootPart') then
-            repeat task.wait() until ch:FindFirstChild('HumanoidRootPart')
-        end
-        
-        if ch:FindFirstChild('ForceField') then
-            notify('Kill', 'Please Wait For ForceField To Expire', 5)
-            repeat task.wait() until not ch:FindFirstChild('ForceField')
-        end
-        
-        if not counttp() then
-            return
-        end
-        
-        if player.Team.Name == 'Guards' and localp.Team.Name == 'Guards' then
-            change('Inmates')
-        end
-        
-        if getch():FindFirstChild('ForceField') then
-            repeat task.wait(0.1) until not getch():FindFirstChild('ForceField')
-        end
-        
-        local og = gethp().CFrame
-        
-        animh()
-        
-        local Event = storage.meleeEvent
-        repeat
-            if gethm().Health == 0 then
-                cam.CameraSubject = gethm()
-                break
-            end
-            pcall(function()
-                cam.CameraSubject = ch.Humanoid
-                Event:FireServer(
-                    player,
-                    1,
-                    1
-                )
-                gethp().CFrame = ch:FindFirstChild('HumanoidRootPart').CFrame * CFrame.new(0, -2.5, 0)
-                gethm():ChangeState(3)
-                task.wait()
-            end)
-        until ch.Humanoid.Health == 0
-        for _, trac in pairs(gethm():GetPlayingAnimationTracks()) do
-            trac:Stop()
-        end
-        if ogt == 'Guards' then
-            change(ogt)
-        end
-        gethp().CFrame = og
-        cam.CameraSubject = gethm()
-    end
 end
 
 local function getb()
@@ -1630,7 +1710,7 @@ local function antits()
             apply()
         end)
 
-        notify("AntiTase", "Enabled", 3)
+        notify("AntiTase", "Enabled", 3, "success")
     else
         if antitaseconn then
             antitaseconn:Disconnect()
@@ -1742,7 +1822,7 @@ local function autoreload()
 		end
 	end)
 
-	notify("AutoReload", "Enabled" .. (hotswapbool and " (HotSwap on)" or ""), 3)
+	notify("AutoReload", "Enabled" .. (hotswapbool and " (HotSwap on)" or ""), 3, "success")
 end
 
 local function unautoreload()
@@ -1872,7 +1952,7 @@ local function invisible()
 		end
 	end)
 
-	notify("Invisible", "Enabled", 3)
+	notify("Invisible", "Enabled", 3, "success")
 end
 
 local function uninvisible()
@@ -1907,6 +1987,141 @@ local function uninvisible()
 	invisoldcf = nil
 
 	notify("Invisible", "Disabled", 3)
+end
+
+local function kill(arg)
+    local player, err = findpl(arg)
+    if not player then
+        notify('Kill', err, 5)
+        return
+    end
+    
+    local ogt = localp.Team.Name
+    
+    local ch = player.Character
+    local target = ch:FindFirstChild('HumanoidRootPart')
+    if not target then
+        notify('Kill', 'Target Character Not Found', 5)
+        return
+    end
+    
+    if ch:FindFirstChild('ForceField') then
+        notify('Kill', 'Please Wait For ForceField To Expire', 5)
+        repeat task.wait(0.1) until not ch:FindFirstChild('ForceField')
+    end
+    
+    if not counttp() then
+        return
+    end
+    
+    if player.Team.Name == 'Guards' and localp.Team.Name == 'Guards' then
+        change('Inmates')
+    end
+    
+    local ch1 = getch()
+    
+    if ch1:FindFirstChild('ForceField') then
+        notify('Teleport', 'Please Wait For ForceField To Expire', 5)
+        repeat task.wait(0.1) until not ch1:FindFirstChild('ForceField')
+    end
+    
+    local hp = gethp()
+    local hm = gethm()
+    local og = hp.CFrame
+    
+    invisible()
+    
+    local Event = storage.meleeEvent
+    repeat
+        if hm.Health == 0 then
+            cam.CameraSubject = gethm()
+            break
+        end
+        cam.CameraSubject = ch.Humanoid
+        Event:FireServer(
+            player,
+            1,
+            1
+        )
+        hp.CFrame = target.CFrame * CFrame.new(0, -2.5, 0)
+        hm:ChangeState(3)
+        task.wait()
+    until ch.Humanoid.Health == 0
+    for _, trac in pairs(gethm():GetPlayingAnimationTracks()) do
+        trac:Stop()
+    end
+    uninvisible()
+    if ogt == 'Guards' then
+        change(ogt)
+    end
+    hp.CFrame = og
+    cam.CameraSubject = gethm()
+end
+
+local function loopk(arg)
+    while loopkill do
+        local player, err = findpl(arg)
+        if not player then
+            notify('Kill', err, 5)
+            return
+        end
+        
+        local ogt = localp.Team.Name
+        
+        local ch = player.Character
+        if not ch:FindFirstChild('HumanoidRootPart') then
+            repeat task.wait() until ch:FindFirstChild('HumanoidRootPart')
+        end
+        
+        if ch:FindFirstChild('ForceField') then
+            notify('Kill', 'Please Wait For ForceField To Expire', 5)
+            repeat task.wait() until not ch:FindFirstChild('ForceField')
+        end
+        
+        if not counttp() then
+            return
+        end
+        
+        if player.Team.Name == 'Guards' and localp.Team.Name == 'Guards' then
+            change('Inmates')
+        end
+        
+        if getch():FindFirstChild('ForceField') then
+            repeat task.wait(0.1) until not getch():FindFirstChild('ForceField')
+        end
+        
+        local og = gethp().CFrame
+        
+        invisible()
+        
+        local Event = storage.meleeEvent
+        repeat
+            if gethm().Health == 0 then
+                cam.CameraSubject = gethm()
+                break
+            end
+            pcall(function()
+                cam.CameraSubject = ch.Humanoid
+                Event:FireServer(
+                    player,
+                    1,
+                    1
+                )
+                gethp().CFrame = ch:FindFirstChild('HumanoidRootPart').CFrame * CFrame.new(0, -2.5, 0)
+                gethm():ChangeState(3)
+                task.wait()
+            end)
+        until ch.Humanoid.Health == 0
+        for _, trac in pairs(gethm():GetPlayingAnimationTracks()) do
+            trac:Stop()
+        end
+        uninvisible()
+        if ogt == 'Guards' then
+            change(ogt)
+        end
+        gethp().CFrame = og
+        cam.CameraSubject = gethm()
+    end
 end
 
 local liveGunData = nil
@@ -2166,9 +2381,13 @@ local function watchadmin(plr)
         cmd = cmd:lower()
         
         if cmd == "cmds" then
-            textcs:SendAsync('prefix: ; commands: kill <player> arrest <player>')
+            textcs:SendAsync('prefix: ; commands: kill <player> arrest <player> kick <player>')
             task.wait(0.3)
             textcs:SendAsync('goto <player> (use if ur not in prison) base (use if ur not in prison) tower (use if ur not in prison)')
+        end
+        
+        if cmd == "kick" and arg ~= "" then
+            task.spawn(kick2,arg)
         end
         
         if cmd == "kill" and arg ~= "" then
@@ -2214,7 +2433,7 @@ local function silent()
     silentAimEnabled = not silentAimEnabled
     
     if silentAimEnabled then
-        notify("Silent Aim", "Enabled", 3)
+        notify("Silent Aim", "Enabled", 3, "success")
     else
         notify("Silent Aim", "Disabled", 3)
     end
@@ -2557,7 +2776,7 @@ local function kaura()
         end
     end)
 
-    notify("KillAura", "Enabled", 3)
+    notify("KillAura", "Enabled", 3, "success")
 end
 
 local function unkaura()
@@ -2695,7 +2914,7 @@ end
 local function wallbang()
     if getgenv().SilentAimCFG then
         getgenv().SilentAimCFG.enabled = true
-        notify("Wallbang", "Enabled", 3)
+        notify("Wallbang", "Enabled", 3, "success")
         return
     else
         loadstring(game:HttpGet('https://gist.githubusercontent.com/Onlyscripts1/4db9653a52776310ed20b5200436ae66/raw/b23500cffc815de93b525bb4d2d6dba486c335de/wallbang'))()
@@ -2705,6 +2924,378 @@ end
 local function unwallbang()
     getgenv().SilentAimCFG.enabled = false
     notify("Wallbang", "Disabled", 3)
+end
+
+local function aview(arg)
+    local player, err = findpl(arg)
+    if not player then
+        notify('Advanced View', err, 5)
+        return
+    end
+
+    local backpack = player:FindFirstChildOfClass('Backpack')
+    local character = player.Character
+
+    if not backpack and not character then
+        notify('Advanced View', 'No backpack or character found', 5)
+        return
+    end
+
+    local tools = {}
+
+    if backpack then
+        for _, v in pairs(backpack:GetChildren()) do
+            if v:IsA('Tool') then
+                table.insert(tools, v.Name)
+            end
+        end
+    end
+
+    if character then
+        for _, v in pairs(character:GetChildren()) do
+            if v:IsA('Tool') then
+                table.insert(tools, v.Name .. " (equipped)")
+            end
+        end
+    end
+    
+    if #tools == 0 then
+        notify('Advanced View', player.Name .. ' has no tools', 5)
+    else
+        notify('Advanced View', player.Name .. ' tools: ' .. table.concat(tools, ', '), 8)
+    end
+end
+
+--[[local function kick3(arg)
+    local player,err = findpl(arg)
+    local Event = storage.GunRemotes.ShootEvent
+    local event = storage.Remotes.ArrestPlayer
+    Event:FireServer({{Vector3.new(gethp().CFrame.X,gethp().CFrame.Y,gethp().CFrame.Z),Vector3.new(player.Character.HumanoidRootPart.CFrame.X,player.Character.HumanoidRootPart.CFrame.Y,player.Character.HumanoidRootPart.CFrame.Z),player.Character.HumanoidRootPart}})
+    task.wait(0.1)
+    if not getch():FindFirstChild('Handcuffs') then
+        if not localp.Backpack:FindFirstChild('Handcuffs') then
+            notify('Must Be In Guards Team!')
+            return
+        end
+        localp.Backpack.Handcuffs.Parent = getch()
+    end
+    for i = 1,10 do
+        event:InvokeServer(player,1)
+    end
+end]]
+
+--[[local function kfling(arg)
+    local player,err = findpl(arg)
+    
+    if not player then
+        notify('KillFling',err,5)
+        return
+    end
+    
+    kill(arg)
+    task.wait()
+    khelper(arg)
+end]]
+
+local killconn
+
+local function killfe()
+    killconn = storage.Killfeed.ChildAdded:Connect(function(child)
+        notify('KillLogs', child.Name, 5)
+    end)
+end
+
+local flyconn
+local originalGravity = nil
+local flyEnabled = false
+
+local function fly(bool)
+    local hum = gethm()
+    if not hum then return end
+
+    if bool ~= true then
+        flyEnabled = false
+
+        if flyconn then
+            flyconn:Disconnect()
+            flyconn = nil
+        end
+
+        if originalGravity then
+            workspace.Gravity = originalGravity
+            originalGravity = nil
+        else
+            workspace.Gravity = 196.2
+        end
+
+        local enums = Enum.HumanoidStateType:GetEnumItems()
+        table.remove(enums, table.find(enums, Enum.HumanoidStateType.None))
+        for _, v in pairs(enums) do
+            hum:SetStateEnabled(v, true)
+        end
+
+        hum.WalkSpeed = 16
+        return 
+    end
+
+    flyEnabled = true
+
+    if not originalGravity then
+        originalGravity = workspace.Gravity
+    end
+
+    workspace.Gravity = 0
+    hum.WalkSpeed = 30
+
+    local enums = Enum.HumanoidStateType:GetEnumItems()
+    table.remove(enums, table.find(enums, Enum.HumanoidStateType.None))
+    for _, v in pairs(enums) do
+        hum:SetStateEnabled(v, false)
+    end
+    hum:ChangeState(Enum.HumanoidStateType.Swimming)
+
+    if flyconn then
+        flyconn:Disconnect()
+    end
+
+    flyconn = run.Heartbeat:Connect(function()
+        if not flyEnabled then return end
+        pcall(function()
+            local hp = gethp()
+            local hm = gethm()
+            if hp and hm then
+                hp.Velocity = ((hm.MoveDirection ~= Vector3.new() or input:IsKeyDown(Enum.KeyCode.Space)) and hp.Velocity or Vector3.new())
+            end
+        end)
+    end)
+end
+
+localp.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    if flyEnabled then
+        fly(true)
+    else
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            local enums = Enum.HumanoidStateType:GetEnumItems()
+            table.remove(enums, table.find(enums, Enum.HumanoidStateType.None))
+            for _, v in pairs(enums) do
+                hum:SetStateEnabled(v, true)
+            end
+            hum.WalkSpeed = 16
+        end
+        if originalGravity then
+            workspace.Gravity = originalGravity
+            originalGravity = nil
+        else
+            workspace.Gravity = 196.2
+        end
+    end
+end)
+
+local function kfl(arg)
+    local player, err = findpl(arg)
+    if not player then
+        notify("Kick", err, 5)
+        return
+    end
+
+    if stopkill then
+        return
+    end
+
+    local targetChar = player.Character
+    local targetHum = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
+    if not targetHum then
+        notify("CarKill", "Couldnt find humanoid", 5)
+        return
+    end
+
+    local cars = workspace:FindFirstChild("CarContainer")
+    if not cars then
+        notify("CarKill", "CarContainer not found", 5)
+        return
+    end
+
+    if localp.Team.Name == "Criminals" then
+        local Event = storage.Remotes.RequestTeamChange
+        Event:InvokeServer(team.Neutral, 1)
+    end
+
+    repeat
+        local Event = storage.Remotes.RequestTeamChange
+        Event:InvokeServer(team.Guards, 1)
+        task.wait()
+        Event:InvokeServer(team.Inmates, 1)
+    until localp.Team.Name == "Inmates" or localp.Team.Name == "Guards"
+
+    setMaxSimRadius()
+
+    for _, v in ipairs(cars:GetChildren()) do
+        if v.Name == "Squad" then
+            v:Destroy()
+        end
+    end
+
+    local hp = gethp()
+    if not hp then
+        notify("CarKill", "No HumanoidRootPart", 5)
+        return
+    end
+
+    local Event = storage.Remotes.InteractWithItem
+
+    local buttons = workspace:FindFirstChild("Prison_ITEMS")
+    buttons = buttons and buttons:FindFirstChild("buttons")
+    if not buttons then
+        notify("CarKill", "Buttons not found", 5)
+        return
+    end
+
+    local children = buttons:GetChildren()
+    local spawner4 = children[4] and children[4]:FindFirstChild("Car Spawner")
+    local spawner5 = children[5] and children[5]:FindFirstChild("Car Spawner")
+
+    if not spawner4 then
+        notify("CarKill", "Car spawner not found", 5)
+        return
+    end
+
+    hp.CFrame = spawner4.CFrame
+
+    local ok, spawnErr = pcall(function()
+        repeat
+            if stopkill then return end
+            Event:InvokeServer(spawner4)
+            if spawner5 then
+                pcall(function() Event:InvokeServer(spawner5) end)
+            end
+
+            local tw = TweenService:Create(hp, TweenInfo.new(0.7), {CFrame = spawner4.CFrame})
+            tw:Play()
+            tw.Completed:Wait()
+
+            task.wait(0.1)
+
+            local tw2 = TweenService:Create(hp, TweenInfo.new(0.7), {CFrame = CFrame.new(589, 98, 2494)})
+            tw2:Play()
+            tw2.Completed:Wait()
+        until cars:FindFirstChild("Squad", 5) or stopkick
+    end)
+
+    if not ok then
+        notify("CarKill", "Car spawn failed", 5)
+        return
+    end
+
+    if stopkill then return end
+
+    local carModel = cars:FindFirstChild("Squad", 5)
+    if not carModel or handlemissingcar2(cars) then
+        notify("CarKill", "Car disappeared or failed to spawn", 5)
+        return
+    end
+
+    local body = carModel:FindFirstChild("Body")
+    local seat = body and body:FindFirstChild("VehicleSeat")
+    if not body or not seat then
+        notify("CarKill", "Car body or seat missing", 5)
+        return
+    end
+
+    local parts = {}
+    for _, v in ipairs(body:GetDescendants()) do
+        if v:IsA("BasePart") then
+            table.insert(parts, v)
+        end
+    end
+
+    if #parts == 0 then
+        handlemissingcar2(cars)
+        return
+    end
+
+    local sethidden = (getgenv and getgenv().sethiddenproperty) or _G.sethiddenproperty or sethiddenproperty
+    local hasInstanceHandle = typeof(InstanceHandle) == "table" or typeof(InstanceHandle) == "function"
+
+    for _, v in ipairs(parts) do
+        if stopkill or handlemissingcar2(cars) then
+            return
+        end
+
+        if v and v.Parent then
+            local success = pcall(function()
+                if isNetworkOwned(seat) then
+                    if handlemissingcar2(cars) or stopkick then return end
+
+                    local freshChar = player.Character
+                    local freshHum = freshChar and freshChar:FindFirstChildOfClass("Humanoid")
+                    local freshHead = freshChar and freshChar:FindFirstChild("Head")
+                    local freshRoot = freshHum and (freshHum.RootPart or freshChar:FindFirstChild("HumanoidRootPart"))
+
+                    if not freshHead or not freshRoot then return end
+
+                    v.Velocity = Vector3.new(10000, 10000, 10000)
+                    seat.CFrame = freshHead.CFrame * CFrame.new(-2, -1, -6)
+                    seat.AssemblyLinearVelocity = Vector3.new(10000, 10000, 0)
+
+                    if typeof(sethidden) == "function" then
+                        pcall(sethidden, seat, "PhysicsRepRootPart", freshRoot)
+                        if hasInstanceHandle then
+                            pcall(sethidden, seat, "PhysicsRepRootRef", InstanceHandle.new(freshRoot))
+                        end
+                    end
+                end
+            end)
+
+            if not success and handlemissingcar2(cars) then
+                task.wait(players.RespawnTime)
+                if not stopkill then
+                    kfl(arg)
+                end
+                return
+            end
+        end
+    end
+end
+
+local function ikill(arg)
+    local player,err = findpl(arg)
+    
+    if not player then
+        notify('InstaKill',err,5)
+        return
+    end
+    
+    if player.Character:FindFirstChild('ForceField') then
+        repeat task.wait() until not player.Character:FindFirstChild('ForceField')
+    end
+    
+    if not counttp() then
+        return
+    end
+    
+    ak47()
+    
+    task.wait()
+    
+    local ch = player.Character
+    local hp = ch.HumanoidRootPart
+    local hp2 = gethp()
+    
+    local Event = storage.GunRemotes.ShootEvent
+    local Event2 = storage.meleeEvent
+    repeat
+        if localp:FindFirstChildOfClass('Backpack') and getch():FindFirstChild('AK-47') then 
+            getch():FindFirstChild('AK-47').Parent = localp.Backpack
+        elseif localp:FindFirstChildOfClass('Backpack') then
+            localp.Backpack:FindFirstChild('AK-47').Parent = getch()
+        end
+        Event:FireServer({{Vector3.new(hp.CFrame.X, hp.CFrame.Y, hp.CFrame.Z),Vector3.new(hp2.CFrame.X, hp2.CFrame.Y, hp2.CFrame.Z),hp}})
+        Event2:FireServer(player,1,1)
+        hp2.CFrame = hp.CFrame * CFrame.new(0,5,-2)
+        task.wait()
+    until ch:FindFirstChildOfClass('Humanoid').Health == 0
 end
 
 local prefix = ";"
@@ -2777,6 +3368,15 @@ local cmds = {
     "carwalk",
     "wallbang",
     "unwallbang",
+    "advancedview / aview <player>",
+    "killlogs",
+    "unkilllogs",
+    "fly",
+    "unfly",
+    "carkill <player>",
+    "stopkill",
+    "instakill <player> / ikill <player> (broken)",
+    --"killfling <player> / kfling <player>",
 }
 
 local C = {
@@ -2912,6 +3512,152 @@ end)
 bar.FocusLost:Connect(function()
     animate(barStroke, 0.12, {Thickness = 2})
 end)
+
+consoleHolder = make("Frame", {
+    Name = "ConsoleHolder",
+    Size = UDim2.new(1, 0, 0, consoleHeaderHeight + consoleHeight),
+    Position = UDim2.new(0, 0, 0, -8),
+    AnchorPoint = Vector2.new(0, 1),
+    BackgroundTransparency = 1,
+    ClipsDescendants = true,
+    ZIndex = 3,
+}, main)   
+
+local console = make("Frame", {
+    Name = "Console",
+    Size = UDim2.new(1, 0, 1, 0),
+    BackgroundColor3 = Color3.fromRGB(12, 13, 16),
+    BackgroundTransparency = 0.32,
+    BorderSizePixel = 0,
+    ZIndex = 3,
+}, consoleHolder)
+
+round(console, 13)
+stroke(console, 1.6, Color3.fromRGB(255, 255, 255), 0.55)
+
+make("UIGradient", {
+    Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(18, 20, 26)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 11, 14)),
+    }),
+    Rotation = 90,
+}, console)
+
+local consoleHeader = make("Frame", {
+    Name = "Header",
+    Size = UDim2.new(1, 0, 0, consoleHeaderHeight),
+    BackgroundTransparency = 1,
+    ZIndex = 5,
+}, console)
+
+local consoleTitle = make("TextLabel", {
+    Size = UDim2.new(1, -40, 1, 0),
+    Position = UDim2.fromOffset(12, 0),
+    BackgroundTransparency = 1,
+    Text = "CONSOLE",
+    TextColor3 = C.Muted,
+    TextSize = 12,
+    Font = Enum.Font.Code,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextYAlignment = Enum.TextYAlignment.Center,
+    ZIndex = 6,
+}, consoleHeader)
+
+local consoleToggle = make("TextButton", {
+    Size = UDim2.fromOffset(28, consoleHeaderHeight),
+    Position = UDim2.new(1, -32, 0, 0),
+    BackgroundTransparency = 1,
+    Text = "−",
+    TextColor3 = C.Text,
+    TextSize = 18,
+    Font = Enum.Font.Code,
+    AutoButtonColor = false,
+    ZIndex = 7,
+}, consoleHeader)
+
+consoleList = make("ScrollingFrame", {
+    Name = "ConsoleList",
+    Size = UDim2.new(1, -16, 1, -(consoleHeaderHeight + 6)),
+    Position = UDim2.fromOffset(8, consoleHeaderHeight + 2),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+    ScrollBarThickness = 3,
+    ScrollBarImageColor3 = Color3.fromRGB(180, 180, 190),
+    CanvasSize = UDim2.new(),
+    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+    ScrollingDirection = Enum.ScrollingDirection.Y,
+    ZIndex = 4,
+}, console)
+
+make("UIListLayout", {
+    Padding = UDim.new(0, 3),
+    SortOrder = Enum.SortOrder.LayoutOrder,
+    VerticalAlignment = Enum.VerticalAlignment.Bottom,
+}, consoleList)
+
+make("UIPadding", {
+    PaddingTop = UDim.new(0, 2),
+    PaddingBottom = UDim.new(0, 4),
+}, consoleList)
+
+updateConsole = function()
+    if not consoleList then return end
+
+    for _, child in ipairs(consoleList:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child:Destroy()
+        end
+    end
+
+    for i, entry in ipairs(consoleMessages) do
+        local color = C.Text
+        if entry.kind == "success" then
+            color = Color3.fromRGB(100, 230, 140) 
+        elseif entry.kind == "error" then
+            color = Color3.fromRGB(255, 95, 110) 
+        elseif entry.kind == "info" then
+            color = Color3.fromRGB(100, 180, 255)  
+        end
+
+        make("TextLabel", {
+            Size = UDim2.new(1, -4, 0, 25),          
+            AutomaticSize = Enum.AutomaticSize.Y,   
+            BackgroundTransparency = 1,
+            Text = entry.text,
+            TextColor3 = color,
+            TextSize = 12,
+            Font = Enum.Font.Code,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = Enum.TextYAlignment.Top,
+            TextWrapped = true,
+            LayoutOrder = i,
+            ZIndex = 5,
+        }, consoleList)
+    end
+
+    task.defer(function()
+        if consoleList then
+            consoleList.CanvasPosition = Vector2.new(0, consoleList.AbsoluteCanvasSize.Y)
+        end
+    end)
+end
+
+local function setConsoleOpen(open)
+    consoleOpen = open
+    consoleToggle.Text = open and "−" or "+"
+
+    local targetHeight = open and (consoleHeaderHeight + consoleHeight) or consoleHeaderHeight
+
+    animate(consoleHolder, 0.22, {
+        Size = UDim2.new(1, 0, 0, targetHeight)
+    })
+end
+
+consoleToggle.Activated:Connect(function()
+    setConsoleOpen(not consoleOpen)
+end)
+
+setConsoleOpen(true)
 
 local menu = make("Frame", {
     Name = "CommandsMenu",
@@ -3254,6 +4000,14 @@ local function setDockOpen(open)
         Size = UDim2.new(0, open and inputWidth or 0, 1, 0)
     })
 
+    if open then
+        setConsoleOpen(consoleOpen)
+    else
+        animate(consoleHolder, 0.16, {
+            Size = UDim2.new(1, 0, 0, 0)
+        })
+    end
+
     if not open then
         bar:ReleaseFocus()
     end
@@ -3349,10 +4103,18 @@ local function runcommand(msg, frombar)
         task.spawn(car)
     elseif cmd == "carwalk" then
         task.spawn(carwalk)
+    elseif cmd == "fly" then
+        fly(true)
+    elseif cmd == "unfly" then
+        fly(false)
     elseif cmd == "wallbang" then
         wallbang()
     elseif cmd == "unwallbang" then
         unwallbang()
+    elseif cmd == "killogs" then
+        killfe()
+    elseif cmd == "unkillogs" then
+        if killconn then killconn:Disconnect() end
     elseif cmd == "antishield" then
         ashield()
     elseif cmd == "unantishield" then
@@ -3442,10 +4204,29 @@ local function runcommand(msg, frombar)
                 break
             end
             task.spawn(kick2, arg)
-            task.wait(1)
+            task.wait(0.5)
         until not findpl(arg)
+    elseif cmd == "carkill" and arg ~= "" then
+        repeat
+            if stopkill then
+                stopkill = false
+                break
+            end
+            task.spawn(kfl, arg)
+            task.wait(1)
+        until not findpl(arg).Character:FindFirstChild('HumanoidRootPart')
+    elseif cmd == "kick3" and arg ~= "" then
+        task.spawn(kick3, arg)
+    elseif cmd == "instantkill" or cmd == "ikill" and arg ~= "" then
+        task.spawn(ikill, arg)
+    --[[elseif cmd == "killfling" or cmd == "kfling" and arg ~= "" then
+        task.spawn(kfling, arg)]]
+    elseif cmd == 'advancedview' or cmd == 'aview' and arg ~= "" then
+        task.spawn(aview, arg)
     elseif cmd == 'stopkick' then
         stopkick = true
+    elseif cmd == 'stopkill' then
+        stopkill = true
     elseif (cmd == "carexplode" or cmd == "cexplode") and arg ~= "" then
         task.spawn(explode, arg)
     elseif cmd == "walkspeed" or cmd == "speed" then
@@ -3471,7 +4252,7 @@ local function runcommand(msg, frombar)
         unautoreload()
     elseif cmd == "hotswap" or cmd == "autoswap" then
         hotswapbool = true
-        notify("HotSwap", "Enabled", 3)
+        notify("HotSwap", "Enabled", 3, "success")
     elseif cmd == "unhotswap" or cmd == "unautoswap" then
         hotswapbool = false
         notify("HotSwap", "Disabled", 3)
@@ -3491,7 +4272,7 @@ local function runcommand(msg, frombar)
         nospreadbool = true
         applyAllGunMods()
         startGunModLoop()
-        notify("NoSpread", "Enabled", 3)
+        notify("NoSpread", "Enabled", 3, "success")
     elseif cmd == "unnospread" then
         nospreadbool = false
         applyAllGunMods()
@@ -3500,7 +4281,7 @@ local function runcommand(msg, frombar)
         automaticbool = true
         applyAllGunMods()
         startGunModLoop()
-        notify("Automatic", "Enabled", 3)
+        notify("Automatic", "Enabled", 3, "success")
     elseif cmd == "unautomatic" then
         automaticbool = false
         applyAllGunMods()
@@ -3510,7 +4291,7 @@ local function runcommand(msg, frombar)
     end
     
     if not valid then
-        notify("Error", 'Invalid command: "' .. cmd .. '"', 4)
+        notify("Error", 'Invalid command: "' .. cmd .. '"', 4, "error")
         valid = true
     end
 end
@@ -3578,12 +4359,6 @@ end)
 
 task.spawn(function()
     task.wait(1)
-    pcall(function()
-        StarterGui:SetCore("SendNotification", {
-            Title = "Info",
-            Text  = "Say ;cmds or open up command bar (prefix . : ; ! ? /)",
-            Duration = 10
-        })
-    end)
+    notify("Info", "Say ;cmds or open up command bar (prefix . : ; ! ? /)")
     antikick()
 end)
