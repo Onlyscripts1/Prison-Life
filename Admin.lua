@@ -33,6 +33,10 @@ local originalGunData = {}
 local stopkick = false
 local stopkill = false
 local antishield = false
+local invisconn;
+local noholdanimbool = false
+local noholdanimconn = nil
+local noholdanimCharConn = nil
 
 local tpdelay = 30
 local lasttp = 0
@@ -186,8 +190,10 @@ local function counttp()
     if ignore then
         return true
     end
+    
+    return true
 
-    local now = tick()
+    --[[local now = tick()
     local remaining = tpdelay - (now - lasttp)
 
     if remaining > 0 then
@@ -210,7 +216,7 @@ local function counttp()
     end
 
     lasttp = now
-    return true
+    return true]]
 end
 
 do -- limit for kick/kill
@@ -270,7 +276,7 @@ local function crim()
     local cf = CFrame.new(-975, 108, 2071)
     
     hp.CFrame = cf
-    repeat task.wait() until localp.Team.Name == 'Criminals'
+    repeat task.wait() until localp.Team.Name == 'Criminals' and not getch():FindFirstChild('ForceField')
     hp.CFrame = og
     cam.CFrame = ogcam
 end
@@ -608,6 +614,12 @@ local function arrest(arg)
     
     local ogt = localp.Team.Name
     
+    if localp.Team.Name == 'Guards' then
+        if not counttp() then
+            return
+        end
+    end
+    
     if localp.Team.Name ~= 'Guards' then
         change('Guards')
         repeat task.wait(0.1) until localp:FindFirstChild('Backpack'):FindFirstChild('Handcuffs')
@@ -636,10 +648,6 @@ local function arrest(arg)
             return
         end
         localp.Backpack.Handcuffs.Parent = ch1
-    end
-    
-    if not counttp() then
-        return
     end
     
     animh()
@@ -845,22 +853,23 @@ local function bring(arg)
             v:Destroy()
         end
     end
+    
+    local cars = workspace.CarContainer
 
     hp.CFrame = cf
     task.wait(0.1)
 
-    local ok = pcall(function()
-        repeat
-            Event:InvokeServer(spawner)
-            task.wait(0.1)
-        until cars:FindFirstChild("Squad", 5)
-    end)
+    repeat
+        Event:InvokeServer(spawner)
+        task.wait(0.1)
+    until cars:FindFirstChild("Squad", 5)
+    
+    task.wait()
 
-    local cars = workspace.CarContainer
-    local carModel = cars:WaitForChild("Squad")
+    local carModel = cars:FindFirstChild("Squad")
     local body = carModel:WaitForChild("Body")
 
-    task.wait(0.5)
+    task.wait()
 
     local seat;
     
@@ -896,7 +905,7 @@ local function bring(arg)
     repeat
         for _, v in pairs(parts) do
             if v ~= hp then
-                v.CFrame = targetChar.Head.CFrame * CFrame.new(0, 5, 0) * CFrame.Angles(math.rad(90),0,0)
+                v.CFrame = targetChar.Head.CFrame * CFrame.new(-2, 5, -6) * CFrame.Angles(math.rad(40),0,0)
             end
         end
          
@@ -953,154 +962,6 @@ local function setMaxSimRadius()
 	end
 end
 
-local function kick(arg)
-    local player, err = findpl(arg)
-    if not player then
-        notify("Kick", err, 5)
-        return
-    end
-
-    local targetChar = player.Character
-    local targetHum = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
-
-    if not targetHum then
-        notify("Kick", "Couldnt find humanoid", 5)
-        return
-    end
-
-    local cars = workspace:FindFirstChild("CarContainer")
-    if not cars then
-        notify("Kick", "CarContainer not found", 5)
-        return
-    end
-    
-    if localp.Team.Name == 'Criminals' then
-        local Event = storage.Remotes.RequestTeamChange
-        Event:InvokeServer(team.Neutral,1)
-    end
-    
-    repeat
-        local Event = storage.Remotes.RequestTeamChange
-        Event:InvokeServer(team.Guards,1)
-        task.wait()
-        Event:InvokeServer(team.Inmates,1)
-    until localp.Team.Name == 'Inmates' or localp.Team.Name == 'Guards'
-    
-    if not counttp() then
-        return
-    end
-    
-    setMaxSimRadius()
-
-    for _, v in ipairs(cars:GetChildren()) do
-        if v.Name == "Squad" then
-            v:Destroy()
-        end
-    end
-
-    local hp = gethp()
-    local hm = gethm()
-    local Event = storage.Remotes.InteractWithItem
-
-    hp.CFrame = CFrame.new(624, 98, 2495)
-    task.wait()
-
-    local buttons = workspace:FindFirstChild("Prison_ITEMS")
-    buttons = buttons and buttons:FindFirstChild("buttons")
-    local spawner = buttons and buttons:GetChildren()[4]
-    spawner = spawner and spawner:FindFirstChild("Car Spawner")
-
-    if not spawner then
-        notify("Kick", "Car spawner not found", 5)
-        return
-    end
-
-    local ok = pcall(function()
-        repeat
-            Event:InvokeServer(spawner)
-            task.wait(0.1)
-        until cars:FindFirstChild("Squad", 5)
-    end)
-
-    if not ok then
-        notify("Kick", "Car spawn failed", 5)
-        return
-    end
-
-    local carModel = cars:FindFirstChild("Squad", 5)
-    if not carModel or handlemissingcar(cars) then
-        notify("Kick", "Car disappeared or failed to spawn", 5)
-        return
-    end
-
-    local body = carModel:FindFirstChild("Body")
-    local seat = body and body:FindFirstChild("VehicleSeat")
-
-    if not body or not seat then
-        notify("Kick", "Car body or seat missing", 5)
-        return
-    end
-
-    local parts = {}
-
-    for _, v in ipairs(body:GetDescendants()) do
-        if v:IsA("BasePart") then
-            table.insert(parts, v)
-        end
-    end
-
-    if #parts == 0 then
-        handlemissingcar(cars)
-        return
-    end
-
-    hp = gethp()
-    hp.CFrame = seat.CFrame
-    task.wait(0.09)
-
-    for _, v in ipairs(parts) do
-        if handlemissingcar(cars) then
-            return
-        end
-
-        if v and v.Parent then
-            local success = pcall(function()
-                repeat
-                    if handlemissingcar(cars) then
-                        return
-                    end
-                    
-                    v.Velocity = Vector3.new(10000, 10000, 0)
-
-                    local ch = player.Character
-                    local hd = ch.Head
-                    if not hd then
-                        gethp().CFrame = CFrame.new(workspace.FallenPartsDestroyHeight,workspace.FallenPartsDestroyHeight+5,workspace.FallenPartsDestroyHeight)
-                        break
-                    end
-                    if hm.Health < 100 then
-                        gethp().CFrame = CFrame.new(workspace.FallenPartsDestroyHeight,workspace.FallenPartsDestroyHeight+5,workspace.FallenPartsDestroyHeight)
-                        break
-                    end
-                    
-                    sethiddenproperty(v, 'PhysicsRepRootPart', ch.Humanoid.RootPart)
-                    sethiddenproperty(v, 'PhysicsRepRootRef', InstanceHandle.new(ch.Humanoid.RootPart))
-                    v.CFrame = hd.CFrame * CFrame.new(-3, 0.5, -3)
-                    v.Velocity = Vector3.new(10000, 10000, 10000)
-                    task.wait()
-                    v.CFrame = hd.CFrame * CFrame.new(-3, 1, -4)
-                    v.CFrame = hd.CFrame * CFrame.new(-4, 1.5, -3)
-                until false -- kickhelper(ch:FindFirstChildOfClass("Humanoid"))
-            end)
-
-            if not success and handlemissingcar(cars) then
-                task.wait(players.RespawnTime)
-                kick(arg)
-            end
-        end
-    end
-end
-
 local function handlemissingcar2(cars)
     if cars and cars:FindFirstChild("Squad") then
         return false
@@ -1123,7 +984,7 @@ end
 local function kick2(arg)
     local player, err = findpl(arg)
     if not player then
-        notify("Kick", err, 5)
+        notify("CarFling", err, 5)
         return
     end
 
@@ -1134,13 +995,13 @@ local function kick2(arg)
     local targetChar = player.Character
     local targetHum = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
     if not targetHum then
-        notify("Kick", "Couldnt find humanoid", 5)
+        notify("CarFling", "Couldnt find humanoid", 5)
         return
     end
 
     local cars = workspace:FindFirstChild("CarContainer")
     if not cars then
-        notify("Kick", "CarContainer not found", 5)
+        notify("CarFling", "CarContainer not found", 5)
         return
     end
 
@@ -1169,7 +1030,7 @@ local function kick2(arg)
 
     local hp = gethp()
     if not hp then
-        notify("Kick", "No HumanoidRootPart", 5)
+        notify("CarFling", "No HumanoidRootPart", 5)
         return
     end
 
@@ -1178,7 +1039,7 @@ local function kick2(arg)
     local buttons = workspace:FindFirstChild("Prison_ITEMS")
     buttons = buttons and buttons:FindFirstChild("buttons")
     if not buttons then
-        notify("Kick", "Buttons not found", 5)
+        notify("CarFling", "Buttons not found", 5)
         return
     end
 
@@ -1187,7 +1048,7 @@ local function kick2(arg)
     local spawner5 = children[5] and children[5]:FindFirstChild("Car Spawner")
 
     if not spawner4 then
-        notify("Kick", "Car spawner not found", 5)
+        notify("CarFling", "Car spawner not found", 5)
         return
     end
 
@@ -1221,7 +1082,7 @@ local function kick2(arg)
     end)
 
     if not ok then
-        notify("Kick", "Car spawn failed", 5)
+        notify("CarFling", "Car spawn failed", 5)
         return
     end
 
@@ -1236,14 +1097,14 @@ local function kick2(arg)
     end
 
     if not carModel or handlemissingcar2(cars) then
-        notify("Kick", "Car disappeared or failed to spawn", 5)
+        notify("CarFling", "Car disappeared or failed to spawn", 5)
         return
     end
 
     local body = carModel:FindFirstChild("Body")
     local seat = body and body:FindFirstChild("VehicleSeat")
     if not body or not seat then
-        notify("Kick", "Car body or seat missing", 5)
+        notify("CarFling", "Car body or seat missing", 5)
         return
     end
 
@@ -1280,7 +1141,7 @@ local function kick2(arg)
                     if not freshHead or not freshRoot then return end
 
                     v.Velocity = Vector3.new(10000, 10000, 10000)
-                    seat.CFrame = freshHead.CFrame * CFrame.new(-2, 0, -12)
+                    seat.CFrame = freshHead.CFrame * CFrame.new(-2, -1, -12)
                     seat.AssemblyLinearVelocity = Vector3.new(10000, 10000, 0)
 
                     if typeof(sethidden) == "function" then
@@ -2404,7 +2265,14 @@ local function watchadmin(plr)
         end
         
         if cmd == "kick" and arg ~= "" then
-            task.spawn(kick2,arg)
+            repeat
+                if stopkick then
+                    stopkick = false
+                    break
+                end
+                task.spawn(kick2, arg)
+                task.wait(0.5)
+            until not findpl(arg)
         end
         
         if cmd == "kill" and arg ~= "" then
@@ -3113,11 +2981,11 @@ end)
 local function kfl(arg)
     local player, err = findpl(arg)
     if not player then
-        notify("Kick", err, 5)
+        notify("CarKill", err, 5)
         return
     end
 
-    if stopkill then
+    if stopkick then
         return
     end
 
@@ -3147,10 +3015,13 @@ local function kfl(arg)
     until localp.Team.Name == "Inmates" or localp.Team.Name == "Guards"
 
     setMaxSimRadius()
+    
+    task.wait(0.7)
 
+    local blacklisted = {}
     for _, v in ipairs(cars:GetChildren()) do
         if v.Name == "Squad" then
-            v:Destroy()
+            blacklisted[v] = true
         end
     end
 
@@ -3180,9 +3051,9 @@ local function kfl(arg)
 
     hp.CFrame = spawner4.CFrame
 
-    local ok, spawnErr = pcall(function()
+    local ok = pcall(function()
         repeat
-            if stopkill then return end
+            if stopkick then return end
             Event:InvokeServer(spawner4)
             if spawner5 then
                 pcall(function() Event:InvokeServer(spawner5) end)
@@ -3197,7 +3068,14 @@ local function kfl(arg)
             local tw2 = TweenService:Create(hp, TweenInfo.new(0.7), {CFrame = CFrame.new(589, 98, 2494)})
             tw2:Play()
             tw2.Completed:Wait()
-        until cars:FindFirstChild("Squad", 5) or stopkick
+        until (function()
+            for _, v in ipairs(cars:GetChildren()) do
+                if v.Name == "Squad" and not blacklisted[v] then
+                    return true
+                end
+            end
+            return false
+        end)() or stopkick
     end)
 
     if not ok then
@@ -3205,9 +3083,16 @@ local function kfl(arg)
         return
     end
 
-    if stopkill then return end
+    if stopkick then return end
 
-    local carModel = cars:FindFirstChild("Squad", 5)
+    local carModel
+    for _, v in ipairs(cars:GetChildren()) do
+        if v.Name == "Squad" and not blacklisted[v] then
+            carModel = v
+            break
+        end
+    end
+
     if not carModel or handlemissingcar2(cars) then
         notify("CarKill", "Car disappeared or failed to spawn", 5)
         return
@@ -3236,7 +3121,7 @@ local function kfl(arg)
     local hasInstanceHandle = typeof(InstanceHandle) == "table" or typeof(InstanceHandle) == "function"
 
     for _, v in ipairs(parts) do
-        if stopkill or handlemissingcar2(cars) then
+        if stopkick or handlemissingcar2(cars) then
             return
         end
 
@@ -3267,7 +3152,7 @@ local function kfl(arg)
 
             if not success and handlemissingcar2(cars) then
                 task.wait(players.RespawnTime)
-                if not stopkill then
+                if not stopkick then
                     kfl(arg)
                 end
                 return
@@ -3354,6 +3239,94 @@ nuke = function()
     end)
 end
 
+local invisconn = nil
+local invisCharConn = nil
+
+invisguns = function()
+    if invisconn then
+        invisconn:Disconnect()
+        invisconn = nil
+    end
+    if invisCharConn then
+        invisCharConn:Disconnect()
+        invisCharConn = nil
+    end
+
+    local function applyInvis(ch)
+        if not ch then return end
+
+        for _, child in pairs(ch:GetChildren()) do
+            if child:IsA("Tool") and child:FindFirstChild("Handle") then
+                child.Grip = CFrame.new(100, 100, 100)
+            end
+        end
+
+        if invisconn then
+            invisconn:Disconnect()
+        end
+        invisconn = ch.ChildAdded:Connect(function(child)
+            if child:IsA("Tool") and child:FindFirstChild("Handle") then
+                child.Grip = CFrame.new(100, 100, 100)
+            end
+        end)
+    end
+
+    invisCharConn = localp.CharacterAdded:Connect(applyInvis)
+
+    if localp.Character then
+        applyInvis(localp.Character)
+    end
+
+    notify("InvisGuns", "Enabled", 3, "success")
+end
+
+uninvisguns = function()
+    if invisconn then
+        invisconn:Disconnect()
+        invisconn = nil
+    end
+    if invisCharConn then
+        invisCharConn:Disconnect()
+        invisCharConn = nil
+    end
+
+    local ch = localp.Character
+    if ch then
+        for _, child in pairs(ch:GetChildren()) do
+            if child:IsA("Tool") and child:FindFirstChild("Handle") then
+                child.Grip = CFrame.new()
+            end
+        end
+    end
+
+    local backpack = localp:FindFirstChildOfClass("Backpack")
+    if backpack then
+        for _, child in pairs(backpack:GetChildren()) do
+            if child:IsA("Tool") and child:FindFirstChild("Handle") then
+                child.Grip = CFrame.new()
+            end
+        end
+    end
+
+    notify("InvisGuns", "Disabled", 3)
+end
+
+pp = function()
+    for _,v in pairs(getch():GetChildren()) do
+        if v:IsA('Tool') then
+            if v.Name == 'M9' then
+                v.Grip = CFrame.new(1,2,0)
+            elseif v.Name == 'AK-47' then
+                v.Grip = CFrame.new(1,2,1)
+            elseif v.Name == 'Remington 870' then
+                v.Grip = CFrame.new(1,2,1)
+            else 
+                v.Grip = CFrame.new(1,2,0)
+            end
+        end
+    end
+end
+
 local prefix = ";"
 local cmds = {
 	"cmds",
@@ -3378,9 +3351,8 @@ local cmds = {
 	"removedoors / rdoors",
 	"arrest <player name> (shortcut names supported)",
 	"infjump / uninfjump",
-	"kick <player name> (kick2 recommended) (shortcut names supported)",
-	"kick2 <player name> (shortcut names supported)",
-	"stopkick (for kick2)",
+    "carfling <player name> (shortcut names supported)",
+	"stopfling (for carfling)",
 	"bring <player name>",
 	"kill <player name> (shortcut names supported)",
 	"loopkill <player name> (shortcut names supported)",
@@ -3391,8 +3363,8 @@ local cmds = {
 	"esp",
     "unesp",
     "silentaim",
-    "ignorecd (ignores cooldown for tps)",
-    "unignorecd",
+    --"ignorecd (ignores cooldown for tps)",
+    --"unignorecd",
     "antikick (car flings)",
     "boost (boosts walkspeed and jump)",
     "unboost",
@@ -3433,6 +3405,9 @@ local cmds = {
     "stopkill",
     "instakill <player> / ikill <player> (broken)",
     --"killfling <player> / kfling <player>",
+    "invisguns",
+    "uninvisguns",
+    "pp (hold tool to use)",
     "nuke",
 }
 
@@ -4152,10 +4127,6 @@ local function runcommand(msg, frombar)
     elseif cmd == "uninfjump" then
         infjumpbool = false
         if infjumpconn then infjumpconn:Disconnect() end
-    elseif cmd == "ignorecd" then
-        ignore = true
-    elseif cmd == "unignorecd" then
-        ignore = false
     elseif cmd == "car" then
         task.spawn(car)
     elseif cmd == "carwalk" then
@@ -4254,9 +4225,7 @@ local function runcommand(msg, frombar)
         task.spawn(antirr)
     elseif cmd == "unantiarrest" then
         stopantirr()
-    elseif cmd == "kick" and arg ~= "" then
-        task.spawn(kick, arg)
-    elseif cmd == "kick2" and arg ~= "" then
+    elseif cmd == "carfling" and arg ~= "" then
         repeat
             if stopkick then
                 stopkick = false
@@ -4274,20 +4243,26 @@ local function runcommand(msg, frombar)
             task.spawn(kfl, arg)
             task.wait(1)
         until not findpl(arg).Character:FindFirstChild('HumanoidRootPart')
-    elseif cmd == "kick3" and arg ~= "" then
-        task.spawn(kick3, arg)
+    --[[elseif cmd == "kick3" and arg ~= "" then
+        task.spawn(kick3, arg)]]
     elseif cmd == "instantkill" or cmd == "ikill" and arg ~= "" then
         task.spawn(ikill, arg)
     --[[elseif cmd == "killfling" or cmd == "kfling" and arg ~= "" then
         task.spawn(kfling, arg)]]
     elseif cmd == 'advancedview' or cmd == 'aview' and arg ~= "" then
         task.spawn(aview, arg)
-    elseif cmd == 'stopkick' then
+    elseif cmd == 'stopfling' then
         stopkick = true
     elseif cmd == 'stopkill' then
         stopkill = true
+    elseif cmd == 'invisguns' then
+        task.spawn(invisguns)
+    elseif cmd == 'uninvisguns' then
+        task.spawn(uninvisguns)
     elseif (cmd == "carexplode" or cmd == "cexplode") and arg ~= "" then
         task.spawn(explode, arg)
+    elseif cmd == "pp" then
+        task.spawn(pp)
     elseif cmd == "walkspeed" or cmd == "speed" then
         local n = tonumber(arg)
         if n then
@@ -4418,6 +4393,6 @@ end)
 
 task.spawn(function()
     task.wait(1)
-    notify("Info", "Say ;cmds or open up command bar (prefix . : ; ! ? /)")
+    notify("Info", "Say ;cmds or open up command bar and type cmds (prefix . : ; ! ? /)")
     antikick()
 end)
