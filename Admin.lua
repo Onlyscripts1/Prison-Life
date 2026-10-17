@@ -1,4 +1,4 @@
--- This script is made by feariosz0 in discord, v1.1.5
+-- This script is made by feariosz0 in discord, v1.1.6
 
 local noclipbool = false
 local infstambool = false
