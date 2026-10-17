@@ -3277,7 +3277,7 @@ invisguns = function()
         applyInvis(localp.Character)
     end
 
-    notify("InvisGuns", "Enabled", 3, "success")
+    notify("InvisGuns", "Enabled, please unequip and then equip again", 3, "success")
 end
 
 uninvisguns = function()
@@ -3316,12 +3316,28 @@ pp = function()
         if v:IsA('Tool') then
             if v.Name == 'M9' then
                 v.Grip = CFrame.new(1,2,0)
+                task.wait()
+                v.Parent = localp.Backpack
+                task.wait()
+                v.Parent = getch()
             elseif v.Name == 'AK-47' then
                 v.Grip = CFrame.new(1,2,1)
+                task.wait()
+                v.Parent = localp.Backpack
+                task.wait()
+                v.Parent = getch()
             elseif v.Name == 'Remington 870' then
                 v.Grip = CFrame.new(1,2,1)
+                task.wait()
+                v.Parent = localp.Backpack
+                task.wait()
+                v.Parent = getch()
             else 
                 v.Grip = CFrame.new(1,2,0)
+                task.wait()
+                v.Parent = localp.Backpack
+                task.wait()
+                v.Parent = getch()
             end
         end
     end
